@@ -27,5 +27,9 @@ behavior change in a minor or patch release.
   `.github/workflows/publish-grpc-contract.yml`). `Tiki.Grpc.Contracts.Compliance` ships a
   real `GetVerificationStatus` RPC; the other four are placeholder shapes. See
   `tools/pack-grpc-contract.sh` and `tools/hash-grpc-contract.sh`.
+- `Validation/Rules/` — FluentValidation extension methods for universal data-shape checks:
+  `MoneyRules` (ISO 4217 minor-unit precision), `PhoneNumberRules` (E.164),
+  `EmailRules`, `CountryCurrencyRules` (against `Core/Enums`), `IdentifierRules` (GUID
+  shape), `DateRules` (future/age/range bounds). Never business rules.
 
 [Unreleased]: https://github.com/tiki/tiki-shared-lib/compare/main...HEAD
