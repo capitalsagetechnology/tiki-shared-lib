@@ -1,0 +1,19 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+
+## IDE
+.vs/
+.idea/
+*.DotSettings.user
+
+## Build artifacts
+artifacts/
+*.nupkg
+*.snupkg
+
+## OS
+.DS_Store
+Thumbs.db

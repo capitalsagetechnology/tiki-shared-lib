@@ -1,0 +1,57 @@
+name: Build & Test
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore Tiki-shared.sln
+
+      - name: Build
+        run: dotnet build Tiki-shared.sln --no-restore --configuration Release
+
+      - name: Test
+        run: >
+          dotnet test Tiki-shared.sln --no-build --configuration Release
+          --logger "trx;LogFileName=test-results.trx"
+          --collect:"XPlat Code Coverage"
+
+      - name: Publish test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: "**/test-results.trx"
+
+      # Layering NFR: no reference, direct or transitive, to Microsoft.EntityFrameworkCore,
+      # any specific database provider, or any vendor-specific tracing/logging SDK.
+      - name: Verify no disallowed package references
+        run: |
+          dotnet restore src/Tiki.Shared/Tiki.Shared.csproj
+          ASSETS="src/Tiki.Shared/obj/project.assets.json"
+
+          DISALLOWED='Microsoft\.EntityFrameworkCore|Datadog\.Trace|MassTransit'
+          if grep -Eiq "$DISALLOWED" "$ASSETS"; then
+            echo "::error::Disallowed package reference found in Tiki.Shared (EF Core, a vendor tracer, or a messaging framework)."
+            grep -Eio "$DISALLOWED" "$ASSETS" | sort -u
+            exit 1
+          fi
+
+          echo "No disallowed package references found."

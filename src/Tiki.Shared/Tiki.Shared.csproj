@@ -1,0 +1,61 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- No EF Core, no vendor tracer, no broker framework -->
+    <IsPackable>true</IsPackable>
+    <PackageId>Tiki.Shared</PackageId>
+    <Description>Cross-cutting infrastructure shared by every Tiki microservice: caching, messaging (Kafka/Redpanda), telemetry (OpenTelemetry), gRPC service-token auth, Querydsl, Result&lt;T&gt;, and health checks. No domain logic, no EF Core, no messaging framework.</Description>
+    <PackageTags>tiki;shared;infrastructure;kafka;redpanda;grpc;opentelemetry;querydsl</PackageTags>
+    <RootNamespace>Tiki.Shared</RootNamespace>
+    <AssemblyName>Tiki.Shared</AssemblyName>
+  </PropertyGroup>
+
+  <!--
+    ASP.NET Core types (HttpContext, IMiddleware, ProblemDetails, IEndpointRouteBuilder,
+    health check abstractions) via FrameworkReference — NOT the Web SDK. This project stays
+    a plain class library so Application-layer code in any consuming service can reference
+    it without pulling in a hosting model.
+  -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Tiki.Shared.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Validation -->
+    <PackageReference Include="FluentValidation" Version="12.1.1" />
+
+    <!-- Telemetry -->
+    <PackageReference Include="OpenTelemetry" Version="1.18.0" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.18.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.18.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.GrpcNetClient" Version="1.18.0-beta.1" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.18.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.18.0" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.18.0" />
+
+    <!-- Caching -->
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.11" />
+
+    <!-- Messaging (Kafka via Redpanda, direct client — no framework) -->
+    <PackageReference Include="Confluent.Kafka" Version="2.15.0" />
+
+    <!-- gRPC -->
+    <PackageReference Include="Grpc.Core.Api" Version="2.83.0" />
+    <PackageReference Include="Grpc.Net.ClientFactory" Version="2.83.0" />
+
+    <!-- Auth (JWKS validation for the real OAuth2 provider this interim HMAC one gets swapped for) -->
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.22.0" />
+
+    <!-- HealthChecks (hand-rolled against the driver directly — no extra health-check framework) -->
+    <PackageReference Include="Npgsql" Version="10.0.3" />
+    <PackageReference Include="StackExchange.Redis" Version="3.1.31" />
+
+    <!-- Logging -->
+    <PackageReference Include="Serilog" Version="4.4.0" />
+  </ItemGroup>
+
+</Project>
