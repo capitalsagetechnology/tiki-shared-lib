@@ -47,9 +47,15 @@ a project reference, **never** copy-pasted between repos.
 4. **Kafka wired directly against Redpanda — no messaging framework in between.**
    `Tiki.Shared/Messaging` talks to Redpanda directly via Confluent.Kafka, with no
    framework-level indirection (no MassTransit or equivalent).
-5. **No EF Core dependency, anywhere in this package — including `Querydsl`.**
-   `Tiki.Shared/Querydsl` is pure LINQ-expression-building over whatever
-   `IQueryable<T>` a service's own Infrastructure-layer repository supplies.
+5. **No EF Core dependency outside `Persistence` — and never a concrete provider,
+   even there.** `Tiki.Shared/Querydsl` is pure LINQ-expression-building over whatever
+   `IQueryable<T>` a service's own Infrastructure-layer repository supplies; it has no
+   EF Core reference of its own. `Tiki.Shared/Persistence` is the one deliberate
+   exception — `BaseEntity`, a global tenant/soft-delete query filter, and an audit
+   `SaveChangesInterceptor` — because it is consumed only from a service's own
+   Infrastructure-layer `DbContext`, never from Domain or Application. It references
+   the base, provider-agnostic `Microsoft.EntityFrameworkCore` package only; a concrete
+   provider (Npgsql, SqlServer, ...) stays in the consuming service.
 
 ## Modules
 
@@ -65,8 +71,10 @@ a project reference, **never** copy-pasted between repos.
 | `Grpc` | Service-token interceptors, trace propagation |
 | `Auth` | `ServiceContext`, `IServiceTokenProvider` |
 | `HealthChecks` | `/health/live`, `/health/ready` with Postgres/Redis/Redpanda checks |
-| `Logging` | Serilog enrichers for trace id / service id |
+| `Logging` | Request logging, client IP capture, `[Sensitive]` masking, Serilog enrichers |
+| `Http` | `AddTikiExternalHttpClient()` — session-lifecycle logging for outbound calls |
 | `Extensions` | Shared JSON conventions, `IServiceCollection` wiring |
+| `Persistence` | `BaseEntity`, tenant/soft-delete query filter, audit `SaveChangesInterceptor` — Infrastructure-layer only |
 
 ## Getting started
 
@@ -88,8 +96,10 @@ should be required to get telemetry, caching, messaging, and auth wired in under
 
 ## Non-negotiables
 
-- No reference, direct or transitive, to `Microsoft.EntityFrameworkCore`, any
-  specific database provider, or any vendor-specific tracing/logging SDK.
+- No reference, direct or transitive, to a concrete database provider or any
+  vendor-specific tracing/logging SDK, anywhere. `Persistence` is the one module
+  allowed to reference the base `Microsoft.EntityFrameworkCore` package itself —
+  never a provider.
 - A minor/patch release never changes a public method signature or DI registration
   name. Breaking changes are a major version bump with a migration note.
 - Every module ships with a unit-test project that runs with no external dependency

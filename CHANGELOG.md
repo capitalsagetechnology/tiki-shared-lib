@@ -53,5 +53,22 @@ behavior change in a minor or patch release.
   request, in order, with timing at each step. Never logs a query string or body. No
   retry/circuit-breaker/idempotency handler existed in this repo yet to compose alongside
   — `AddTikiExternalHttpClient` is structured so those can attach to the same builder later.
+- `Persistence/` — the one module in `Tiki.Shared` allowed to reference EF Core directly
+  (the base, provider-agnostic `Microsoft.EntityFrameworkCore` package only — never a
+  concrete provider), since it is consumed only from a service's own Infrastructure-layer
+  `DbContext`, never Domain or Application:
+  - `Entities/BaseEntity` — `Id`, `TenantId`, `CreatedAt`/`CreatedBy`,
+    `UpdatedAt`/`UpdatedBy`, `IsDeleted`, `RowVersion` (`[Timestamp]`). Zero package
+    dependencies of its own, so Domain can inherit from it freely.
+  - `ModelBuilderExtensions.ApplyTikiConventions(ModelBuilder, Func<Guid?>)` — a global
+    query filter (`TenantId == current tenant && !IsDeleted`) plus a `TenantId` index on
+    every `BaseEntity`-derived type. `IgnoreQueryFilters()` is the sanctioned escape hatch
+    for a tenant-spanning admin query; raw SQL needs its own explicit `WHERE` clause.
+  - `TenantAuditSaveChangesInterceptor` — stamps `TenantId`/`CreatedAt`/`CreatedBy` on
+    insert and `UpdatedAt`/`UpdatedBy` on update, from the same ambient accessors.
+
+  Update to `build-test.yml`'s disallowed-package check: the base `Microsoft.EntityFrameworkCore`
+  package is now permitted in `Tiki.Shared`; a concrete provider (Npgsql, SqlServer,
+  Sqlite, ...) still fails the build.
 
 [Unreleased]: https://github.com/tiki/tiki-shared-lib/compare/main...HEAD

@@ -1,7 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <!-- No EF Core, no vendor tracer, no broker framework -->
+    <!--
+      No vendor tracer, no broker framework, no database provider. The one deliberate
+      exception is Persistence/, which references the base Microsoft.EntityFrameworkCore
+      package (never a provider like Npgsql.EntityFrameworkCore.PostgreSQL) — it is
+      consumed only from a service's own Infrastructure layer, never Domain/Application.
+      See build-test.yml's disallowed-package check for what that boundary actually enforces.
+    -->
     <IsPackable>true</IsPackable>
     <PackageId>Tiki.Shared</PackageId>
     <!-- Source of truth for release version — publish-shared.yml refuses to run unless a
@@ -59,6 +65,9 @@
 
     <!-- Logging -->
     <PackageReference Include="Serilog" Version="4.4.0" />
+
+    <!-- Persistence (base package only — never a concrete database provider) -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.0" />
   </ItemGroup>
 
 </Project>

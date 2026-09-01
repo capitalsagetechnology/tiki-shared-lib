@@ -40,16 +40,19 @@ jobs:
           name: test-results
           path: "**/test-results.trx"
 
-      # Layering NFR: no reference, direct or transitive, to Microsoft.EntityFrameworkCore,
-      # any specific database provider, or any vendor-specific tracing/logging SDK.
+      # Layering NFR: no reference, direct or transitive, to any specific database
+      # provider or any vendor-specific tracing/logging SDK or messaging framework.
+      # The one deliberate exception is Persistence/, which references the base,
+      # provider-agnostic Microsoft.EntityFrameworkCore package directly — allowed here,
+      # but a concrete provider (Npgsql, SqlServer, Sqlite, ...) never is.
       - name: Verify no disallowed package references
         run: |
           dotnet restore src/Tiki.Shared/Tiki.Shared.csproj
           ASSETS="src/Tiki.Shared/obj/project.assets.json"
 
-          DISALLOWED='Microsoft\.EntityFrameworkCore|Datadog\.Trace|MassTransit'
+          DISALLOWED='Microsoft\.EntityFrameworkCore\.(SqlServer|Sqlite|Cosmos|Relational)|Npgsql\.EntityFrameworkCore|Pomelo\.EntityFrameworkCore|MySql\.EntityFrameworkCore|Datadog\.Trace|MassTransit'
           if grep -Eiq "$DISALLOWED" "$ASSETS"; then
-            echo "::error::Disallowed package reference found in Tiki.Shared (EF Core, a vendor tracer, or a messaging framework)."
+            echo "::error::Disallowed package reference found in Tiki.Shared (a concrete EF Core provider, a vendor tracer, or a messaging framework)."
             grep -Eio "$DISALLOWED" "$ASSETS" | sort -u
             exit 1
           fi
