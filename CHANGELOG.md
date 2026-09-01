@@ -44,5 +44,14 @@ behavior change in a minor or patch release.
   last-4-visible, or hashed) on any type destructured for structured logging, for every
   sink, without a developer having to remember to mask it at the call site. Wired via the
   new `LoggingExtensions.ConfigureTikiLogging(serviceName)`.
+- `ServiceContext.SessionId` — a GUID minted once per inbound request by
+  `RequestLoggingMiddleware`, shared by every outbound call that request goes on to make.
+- `Http/SessionLifecycleLoggingHandler` + `Http/HttpClientExtensions.AddTikiExternalHttpClient` —
+  a `DelegatingHandler` logging started/completed/failed for every outbound call made
+  through a client built via `AddTikiExternalHttpClient`, tagged with session id and trace
+  id so one session id's log lines show the full downstream lifecycle of one inbound
+  request, in order, with timing at each step. Never logs a query string or body. No
+  retry/circuit-breaker/idempotency handler existed in this repo yet to compose alongside
+  — `AddTikiExternalHttpClient` is structured so those can attach to the same builder later.
 
 [Unreleased]: https://github.com/tiki/tiki-shared-lib/compare/main...HEAD

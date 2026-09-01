@@ -8,9 +8,11 @@ namespace Tiki.Shared.Logging;
 /// <summary>
 /// Logs exactly one structured line per inbound request, on completion: HTTP method,
 /// path, status code, duration in milliseconds, the resolved client IPv4
-/// (<see cref="ClientIpAccessor"/>), tenant id, calling-service/caller identity if
-/// available, and trace id. Registered early in the pipeline — before auth — so even a
-/// rejected request gets logged.
+/// (<see cref="ClientIpAccessor"/>), tenant id, session id, calling-service/caller
+/// identity if available, and trace id. Registered early in the pipeline — before auth —
+/// so even a rejected request gets logged. Also mints <see cref="ServiceContext.SessionId"/>
+/// for the request, so every outbound call this request goes on to make shares one
+/// correlatable session id.
 /// </summary>
 public sealed class RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggingMiddleware> logger)
 {
@@ -18,6 +20,8 @@ public sealed class RequestLoggingMiddleware(RequestDelegate next, ILogger<Reque
 
     public async Task InvokeAsync(HttpContext context)
     {
+        ServiceContext.SessionId = Guid.NewGuid();
+
         if (Guid.TryParse(context.Request.Headers[TenantHeaderName].FirstOrDefault(), out var tenantId))
             ServiceContext.TenantId = tenantId;
 
@@ -33,13 +37,14 @@ public sealed class RequestLoggingMiddleware(RequestDelegate next, ILogger<Reque
             stopwatch.Stop();
 
             logger.LogInformation(
-                "{Method} {Path} responded {StatusCode} in {ElapsedMs}ms — client {ClientIp}, tenant {TenantId}, caller {CallingService}, trace {TraceId}",
+                "{Method} {Path} responded {StatusCode} in {ElapsedMs}ms — client {ClientIp}, tenant {TenantId}, session {SessionId}, caller {CallingService}, trace {TraceId}",
                 context.Request.Method,
                 context.Request.Path,
                 context.Response.StatusCode,
                 stopwatch.Elapsed.TotalMilliseconds,
                 clientIp ?? "unknown",
                 ServiceContext.TenantId,
+                ServiceContext.SessionId,
                 ServiceContext.CallingService ?? "unknown",
                 ServiceContext.TraceId);
         }

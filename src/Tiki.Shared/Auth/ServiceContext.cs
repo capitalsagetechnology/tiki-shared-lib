@@ -13,6 +13,7 @@ public static class ServiceContext
     private static readonly AsyncLocal<string?> TraceIdLocal = new();
     private static readonly AsyncLocal<string?> CallingServiceLocal = new();
     private static readonly AsyncLocal<Guid?> TenantIdLocal = new();
+    private static readonly AsyncLocal<Guid?> SessionIdLocal = new();
 
     /// <summary>The trace id for the current logical call chain. Never null once set at the request edge.</summary>
     public static string TraceId
@@ -40,6 +41,21 @@ public static class ServiceContext
     {
         get => TenantIdLocal.Value;
         set => TenantIdLocal.Value = value;
+    }
+
+    /// <summary>
+    /// A GUID minted once per inbound request by <see cref="Logging.RequestLoggingMiddleware"/>,
+    /// ambient for the lifetime of that request. Every outbound call made while handling
+    /// one inbound request shares the same <see cref="SessionId"/>, so
+    /// <see cref="Http.SessionLifecycleLoggingHandler"/>'s started/completed/failed log
+    /// lines for all of them can be correlated by filtering on this one value — showing
+    /// the complete, ordered, timed lifecycle of everything one inbound request triggered
+    /// downstream, not just the first call.
+    /// </summary>
+    public static Guid? SessionId
+    {
+        get => SessionIdLocal.Value;
+        set => SessionIdLocal.Value = value;
     }
 
     /// <summary>

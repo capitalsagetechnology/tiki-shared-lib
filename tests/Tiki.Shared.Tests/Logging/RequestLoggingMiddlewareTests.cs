@@ -84,6 +84,44 @@ public class RequestLoggingMiddlewareTests
     }
 
     [Fact]
+    public async Task Mints_a_SessionId_for_every_request()
+    {
+        Guid? observedSessionId = null;
+        var logger = new CapturingLogger();
+        var middleware = new RequestLoggingMiddleware(
+            _ =>
+            {
+                observedSessionId = ServiceContext.SessionId;
+                return Task.CompletedTask;
+            },
+            logger);
+
+        await middleware.InvokeAsync(new DefaultHttpContext());
+
+        Assert.NotNull(observedSessionId);
+    }
+
+    [Fact]
+    public async Task Two_separate_requests_get_two_different_SessionIds()
+    {
+        var logger = new CapturingLogger();
+        var observedSessionIds = new List<Guid?>();
+        var middleware = new RequestLoggingMiddleware(
+            _ =>
+            {
+                observedSessionIds.Add(ServiceContext.SessionId);
+                return Task.CompletedTask;
+            },
+            logger);
+
+        await middleware.InvokeAsync(new DefaultHttpContext());
+        await middleware.InvokeAsync(new DefaultHttpContext());
+
+        Assert.Equal(2, observedSessionIds.Count);
+        Assert.NotEqual(observedSessionIds[0], observedSessionIds[1]);
+    }
+
+    [Fact]
     public async Task An_invalid_tenant_header_leaves_TenantId_unset()
     {
         var logger = new CapturingLogger();

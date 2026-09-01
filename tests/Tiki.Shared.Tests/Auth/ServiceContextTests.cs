@@ -51,4 +51,34 @@ public class ServiceContextTests
         // logical call context), so no ambient value from another test can leak in here.
         Assert.False(string.IsNullOrWhiteSpace(ServiceContext.TraceId));
     }
+
+    [Fact]
+    public void TenantId_is_null_until_explicitly_set()
+    {
+        Assert.Null(ServiceContext.TenantId);
+    }
+
+    [Fact]
+    public void TenantId_round_trips_through_a_direct_set()
+    {
+        var tenantId = Guid.NewGuid();
+        ServiceContext.TenantId = tenantId;
+
+        Assert.Equal(tenantId, ServiceContext.TenantId);
+    }
+
+    [Fact]
+    public void SessionId_is_null_until_explicitly_set()
+    {
+        Assert.Null(ServiceContext.SessionId);
+    }
+
+    [Fact]
+    public void SessionId_round_trips_through_a_direct_set()
+    {
+        var sessionId = Guid.NewGuid();
+        ServiceContext.SessionId = sessionId;
+
+        Assert.Equal(sessionId, ServiceContext.SessionId);
+    }
 }
