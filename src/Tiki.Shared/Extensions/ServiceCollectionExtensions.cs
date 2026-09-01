@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Tiki.Shared.Core.Middleware;
+using Tiki.Shared.Logging;
 
 namespace Tiki.Shared.Extensions;
 
@@ -25,13 +26,17 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Wires <see cref="CorrelationIdMiddleware"/> and <see cref="ErrorHandlingMiddleware"/>
-    /// in the correct order — correlation id first, so a subsequent error is logged and
-    /// returned with the same trace id every other span in the request carries.
+    /// Wires <see cref="CorrelationIdMiddleware"/>, <see cref="RequestLoggingMiddleware"/>,
+    /// and <see cref="ErrorHandlingMiddleware"/> in the correct order: correlation id first
+    /// so the trace id is already set before anything logs it; request logging wraps error
+    /// handling (not the other way round) so its one log line per request reports whatever
+    /// status code error handling ultimately produced; both run before authentication, so
+    /// even a rejected request is logged with the right trace id.
     /// </summary>
     public static IApplicationBuilder UseTikiCore(this IApplicationBuilder app)
     {
         app.UseMiddleware<CorrelationIdMiddleware>();
+        app.UseMiddleware<RequestLoggingMiddleware>();
         app.UseMiddleware<ErrorHandlingMiddleware>();
         return app;
     }

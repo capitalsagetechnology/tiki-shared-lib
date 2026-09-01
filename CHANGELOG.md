@@ -31,5 +31,18 @@ behavior change in a minor or patch release.
   `MoneyRules` (ISO 4217 minor-unit precision), `PhoneNumberRules` (E.164),
   `EmailRules`, `CountryCurrencyRules` (against `Core/Enums`), `IdentifierRules` (GUID
   shape), `DateRules` (future/age/range bounds). Never business rules.
+- `ServiceContext.TenantId` — a third ambient value alongside trace id and calling
+  service, set from the inbound `X-Tenant-Id` header.
+- `Logging/ClientIpAccessor` — resolves the real caller IPv4 from the first hop of
+  `X-Forwarded-For`, falling back to `RemoteIpAddress`, unwrapping an
+  IPv6-mapped-IPv4 address to plain IPv4.
+- `Logging/RequestLoggingMiddleware` — one structured log line per inbound request
+  (method, path, status, duration, client IP, tenant, caller, trace id), wired into
+  `UseTikiCore()` ahead of error handling and auth so even a rejected request is logged.
+- `Core/Attributes/SensitiveAttribute` + `Logging/SensitiveDataMaskingPolicy` — a Serilog
+  `IDestructuringPolicy` that masks every `[Sensitive]`-attributed property (full redact,
+  last-4-visible, or hashed) on any type destructured for structured logging, for every
+  sink, without a developer having to remember to mask it at the call site. Wired via the
+  new `LoggingExtensions.ConfigureTikiLogging(serviceName)`.
 
 [Unreleased]: https://github.com/tiki/tiki-shared-lib/compare/main...HEAD

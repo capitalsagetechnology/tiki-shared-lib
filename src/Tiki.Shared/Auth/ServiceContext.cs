@@ -12,6 +12,7 @@ public static class ServiceContext
 {
     private static readonly AsyncLocal<string?> TraceIdLocal = new();
     private static readonly AsyncLocal<string?> CallingServiceLocal = new();
+    private static readonly AsyncLocal<Guid?> TenantIdLocal = new();
 
     /// <summary>The trace id for the current logical call chain. Never null once set at the request edge.</summary>
     public static string TraceId
@@ -25,6 +26,20 @@ public static class ServiceContext
     {
         get => CallingServiceLocal.Value;
         set => CallingServiceLocal.Value = value;
+    }
+
+    /// <summary>
+    /// The tenant the current request belongs to, if any — set by
+    /// <see cref="Logging.RequestLoggingMiddleware"/> from the inbound <c>X-Tenant-Id</c>
+    /// header. Null for a request that never carried one (an internal/unauthenticated
+    /// endpoint, for example). This is the same ambient source
+    /// <c>Persistence.ModelBuilderExtensions.ApplyTikiConventions</c> and
+    /// <c>Persistence.TenantAuditSaveChangesInterceptor</c> read from.
+    /// </summary>
+    public static Guid? TenantId
+    {
+        get => TenantIdLocal.Value;
+        set => TenantIdLocal.Value = value;
     }
 
     /// <summary>
