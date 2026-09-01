@@ -1,0 +1,75 @@
+name: Publish Tiki.Shared
+
+# Deliberately its own tag namespace (shared-v*.*.*, not v*.*.*) so Tiki.Shared's release
+# cadence never collides with a grpc-<service>-v*.*.* contract-package tag on the same repo.
+on:
+  push:
+    tags:
+      - "shared-v*.*.*"
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history — required for the ancestry check below
+
+      - name: Refuse to run unless the tag is reachable from main
+        run: |
+          git fetch origin main --quiet
+          if ! git merge-base --is-ancestor "${{ github.sha }}" origin/main; then
+            echo "::error::Tag ${{ github.ref_name }} (commit ${{ github.sha }}) is not reachable from main. Refusing to publish."
+            exit 1
+          fi
+          echo "Verified: ${{ github.ref_name }} is reachable from main."
+
+      - name: Refuse to run unless the tag version matches Tiki.Shared's <Version>
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#shared-v}"
+          PROJECT_VERSION=$(grep -oP '(?<=<Version>)[^<]+' src/Tiki.Shared/Tiki.Shared.csproj | head -n1)
+
+          if [ -z "$PROJECT_VERSION" ]; then
+            echo "::error::src/Tiki.Shared/Tiki.Shared.csproj has no <Version> element to compare against."
+            exit 1
+          fi
+
+          if [ "$TAG_VERSION" != "$PROJECT_VERSION" ]; then
+            echo "::error::Tag version ($TAG_VERSION) does not match <Version> in Tiki.Shared.csproj ($PROJECT_VERSION)."
+            exit 1
+          fi
+
+          echo "Verified: tag version $TAG_VERSION matches Tiki.Shared.csproj."
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore Tiki-shared.sln
+
+      - name: Build
+        run: dotnet build Tiki-shared.sln --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test Tiki-shared.sln --no-build --configuration Release
+
+      - name: Pack Tiki.Shared only
+        run: >
+          dotnet pack src/Tiki.Shared/Tiki.Shared.csproj --no-build --configuration Release
+          --output ./artifacts
+
+      - name: Push to GitHub Packages
+        run: >
+          dotnet nuget push "./artifacts/Tiki.Shared.*.nupkg"
+          --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
+          --api-key ${{ secrets.GITHUB_TOKEN }}
+          --skip-duplicate

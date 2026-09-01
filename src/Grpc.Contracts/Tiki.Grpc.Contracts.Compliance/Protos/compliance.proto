@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+option csharp_namespace = "Tiki.Grpc.Contracts.Compliance";
+
+package tiki.grpc.contracts.compliance;
+
+// Owning service: Compliance. This package carries both the client stub every caller
+// consumes and the service base class Compliance's own implementation derives from.
+service ComplianceService {
+  rpc GetVerificationStatus (GetVerificationStatusRequest) returns (GetVerificationStatusResponse);
+}
+
+message GetVerificationStatusRequest {
+  string subject_id = 1;
+}
+
+message GetVerificationStatusResponse {
+  string subject_id = 1;
+  VerificationState state = 2;
+}
+
+enum VerificationState {
+  VERIFICATION_STATE_UNSPECIFIED = 0;
+  VERIFICATION_STATE_PENDING = 1;
+  VERIFICATION_STATE_VERIFIED = 2;
+  VERIFICATION_STATE_REJECTED = 3;
+  VERIFICATION_STATE_EXPIRED = 4;
+}

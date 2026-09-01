@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+option csharp_namespace = "Tiki.Grpc.Contracts.Identity";
+
+package tiki.grpc.contracts.identity;
+
+// Placeholder contract — real RPCs to follow. Owning service: Identity.
+service IdentityService {
+  rpc Ping (PingRequest) returns (PingResponse);
+}
+
+message PingRequest {
+}
+
+message PingResponse {
+  bool ok = 1;
+}

@@ -21,5 +21,11 @@ behavior change in a minor or patch release.
   `IServiceTokenProvider` with an interim HMAC implementation.
 - `/health/live` and `/health/ready` endpoints covering Postgres, Redis, and Redpanda.
 - Serilog enrichers and shared `System.Text.Json` conventions.
+- `src/Grpc.Contracts/` — one gRPC contract package per owning service
+  (`Tiki.Grpc.Contracts.Identity/.Wallet/.Transaction/.Compliance/.Integration`), each
+  versioned and released independently of `Tiki.Shared` itself (see
+  `.github/workflows/publish-grpc-contract.yml`). `Tiki.Grpc.Contracts.Compliance` ships a
+  real `GetVerificationStatus` RPC; the other four are placeholder shapes. See
+  `tools/pack-grpc-contract.sh` and `tools/hash-grpc-contract.sh`.
 
 [Unreleased]: https://github.com/tiki/tiki-shared-lib/compare/main...HEAD

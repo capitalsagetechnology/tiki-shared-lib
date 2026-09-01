@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <PackageId>Tiki.Grpc.Contracts.Transaction</PackageId>
+    <Version>0.1.0</Version>
+    <Description>gRPC contract for Transaction Service — .proto-derived client stub and service base class. Placeholder shape; real RPCs to follow.</Description>
+    <PackageTags>tiki;grpc;contracts;transaction</PackageTags>
+    <RootNamespace>Tiki.Grpc.Contracts.Transaction</RootNamespace>
+    <AssemblyName>Tiki.Grpc.Contracts.Transaction</AssemblyName>
+
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+    <DebugType>embedded</DebugType>
+
+    <!--
+      Grpc.Tools-generated code isn't hand-reviewed the way the rest of this repo is, and
+      trips analyzer/nullable warnings the root Directory.Build.props otherwise treats as
+      errors. Relaxed here only, not repo-wide.
+    -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Consumer-facing dependencies only: Google.Protobuf for message types, Grpc.Core.Api
+      for the generated stub/base class shapes. Never Grpc.Net.Client or Grpc.AspNetCore —
+      this package must never force a transport choice on a consumer.
+    -->
+    <PackageReference Include="Google.Protobuf" Version="3.36.1" />
+    <PackageReference Include="Grpc.Core.Api" Version="2.83.0" />
+
+    <!-- Build-time codegen only — a development dependency, never flows to consumers. -->
+    <PackageReference Include="Grpc.Tools" Version="2.83.0" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="Protos/transaction.proto" GrpcServices="Both" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Ship the .proto itself as plain package content under protos/, not contentFiles —
+      contentFiles gets fed straight to a consumer's own C# compiler on restore, which is
+      never what we want for a file that exists to be read, not compiled, downstream.
+    -->
+    <None Include="Protos/transaction.proto" Pack="true" PackagePath="protos" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+option csharp_namespace = "Tiki.Grpc.Contracts.Wallet";
+
+package tiki.grpc.contracts.wallet;
+
+// Placeholder contract — real RPCs to follow. Owning service: Wallet.
+service WalletService {
+  rpc Ping (PingRequest) returns (PingResponse);
+}
+
+message PingRequest {
+}
+
+message PingResponse {
+  bool ok = 1;
+}
