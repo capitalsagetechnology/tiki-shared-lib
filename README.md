@@ -68,7 +68,7 @@ a project reference, **never** copy-pasted between repos.
 | `Caching` | `ITieredCache` — L1 memory + L2 Redis, one API |
 | `Querydsl` | Dynamic filter/sort/paginate over `IQueryable<T>`, zero EF Core |
 | `Messaging` | Kafka/Redpanda producer, consumer base class, retry/DLQ routing |
-| `Grpc` | Service-token interceptors, trace propagation |
+| `Grpc` | HMAC service-token interceptors (`ServiceTokenAuthInterceptor`, client interceptor) |
 | `Auth` | `ServiceContext`, `IServiceTokenProvider` |
 | `HealthChecks` | `/health/live`, `/health/ready` with Postgres/Redis/Redpanda checks |
 | `Logging` | Request logging, client IP capture, `[Sensitive]` masking, Serilog enrichers |
@@ -93,6 +93,38 @@ builder.Services
 See each module's own doc comments for the full wiring surface. No source-reading
 should be required to get telemetry, caching, messaging, and auth wired in under
 30 minutes.
+
+### Mesh gRPC (HMAC service-token)
+
+Mesh RPCs authenticate with `x-service-token` via `ServiceTokenAuthInterceptor` —
+HMAC for now, not JWT, OAuth2, or API keys. Register the provider and attach the
+interceptor **per mesh service** so a JWT-backed gRPC surface on the same host
+(for example user-admin) is not forced through HMAC:
+
+```csharp
+builder.Services.AddOptions<HmacServiceTokenOptions>()
+    .Bind(builder.Configuration.GetSection(HmacServiceTokenOptions.SectionName))
+    .Validate(
+        options => !string.IsNullOrWhiteSpace(options.ServiceId)
+            && !string.IsNullOrWhiteSpace(options.SharedSecret)
+            && options.SharedSecret.Length >= 32,
+        $"{HmacServiceTokenOptions.SectionName} requires ServiceId and a SharedSecret of at least 32 characters.")
+    .ValidateOnStart();
+
+builder.Services.AddSingleton<IServiceTokenProvider, HmacServiceTokenProvider>();
+
+builder.Services.AddGrpc()
+    .AddServiceOptions<VeriffGrpcService>(options =>
+    {
+        options.Interceptors.Add<ServiceTokenAuthInterceptor>();
+    });
+
+app.MapGrpcService<VeriffGrpcService>();
+```
+
+Do not add the service-token interceptor globally, and do not map mesh services
+with `AllowAnonymous()` as a JWT-fallback workaround. REST JWT and mesh HMAC are
+separate audiences.
 
 ## Non-negotiables
 

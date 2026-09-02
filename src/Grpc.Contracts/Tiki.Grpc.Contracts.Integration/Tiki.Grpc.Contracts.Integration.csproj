@@ -4,7 +4,7 @@
     <IsPackable>true</IsPackable>
     <PackageId>Tiki.Grpc.Contracts.Integration</PackageId>
     <Version>0.1.0</Version>
-    <Description>gRPC contract for Integration Service — .proto-derived client stub and service base class. Placeholder shape; real RPCs to follow.</Description>
+    <Description>gRPC contract for Integration Service — provider-split protos (Veriff today; KYCAID, Volume, SmartComply later). .proto-derived client stub and service base class.</Description>
     <PackageTags>tiki;grpc;contracts;integration</PackageTags>
     <RootNamespace>Tiki.Grpc.Contracts.Integration</RootNamespace>
     <AssemblyName>Tiki.Grpc.Contracts.Integration</AssemblyName>
@@ -35,7 +35,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Protobuf Include="Protos/integration.proto" GrpcServices="Both" />
+    <Protobuf Include="Protos/*.proto" GrpcServices="Both" />
   </ItemGroup>
 
   <ItemGroup>
@@ -43,8 +43,10 @@
       Ship the .proto itself as plain package content under protos/, not contentFiles —
       contentFiles gets fed straight to a consumer's own C# compiler on restore, which is
       never what we want for a file that exists to be read, not compiled, downstream.
+      One file per provider (veriff.proto, later kycaid.proto, ...) so this package
+      does not grow a single catch-all proto.
     -->
-    <None Include="Protos/integration.proto" Pack="true" PackagePath="protos" />
+    <None Include="Protos/*.proto" Pack="true" PackagePath="protos" />
   </ItemGroup>
 
 </Project>
