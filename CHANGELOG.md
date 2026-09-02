@@ -7,15 +7,6 @@ behavior change in a minor or patch release.
 
 ## [Unreleased]
 
-### Changed
-- Mesh gRPC auth is HMAC service-token only. Hosts bind `HmacServiceTokenOptions` and
-  attach `ServiceTokenAuthInterceptor` per provider service — not via `AddTikiGrpcAuth()`,
-  and not by mapping mesh endpoints with `AllowAnonymous()` as a JWT-fallback workaround.
-
-### Removed
-- `GrpcAuthExtensions.AddTikiGrpcAuth()`.
-- `GrpcErrorMapper`, `GrpcRequestLoggingInterceptor`, and `GrpcMetadataInterceptor`.
-  Mesh hosts map their own errors and logging; `Tiki.Shared` keeps HMAC interceptors only.
 
 ### Added
 - Initial project scaffold: `Core`, `Results`, `Validation`, `Telemetry`, `Caching`,
@@ -39,10 +30,6 @@ behavior change in a minor or patch release.
   placeholder shapes. See `tools/pack-grpc-contract.sh` and
   `tools/hash-grpc-contract.sh`. Integration's first published shape is
   `Tiki.Grpc.Contracts.Integration` 0.1.0 below.
-- HMAC service-token options + interceptor registrations for mesh gRPC
-  (`HmacServiceTokenProvider`, `ServiceTokenAuthInterceptor`). Hosts bind
-  `Tiki:Auth:HmacServiceToken` and attach interceptors per provider service.
-  Mesh gRPC uses HMAC service tokens, not JWT.
 - `Validation/Rules/` — FluentValidation extension methods for universal data-shape checks:
   `MoneyRules` (ISO 4217 minor-unit precision), `PhoneNumberRules` (E.164),
   `EmailRules`, `CountryCurrencyRules` (against `Core/Enums`), `IdentifierRules` (GUID
