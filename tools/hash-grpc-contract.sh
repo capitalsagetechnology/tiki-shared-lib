@@ -29,7 +29,7 @@ case "$(echo "$1" | tr '[:upper:]' '[:lower:]')" in
   wallet)      SERVICE="Wallet";      PROTO_FILE="wallet.proto" ;;
   transaction) SERVICE="Transaction"; PROTO_FILE="transaction.proto" ;;
   compliance)  SERVICE="Compliance";  PROTO_FILE="compliance.proto" ;;
-  integration) SERVICE="Integration"; PROTO_FILE="integration.proto" ;;
+  integration) SERVICE="Integration"; PROTO_FILE="veriff.proto" ;;
   *) echo "error: unknown service '$1'" >&2; usage ;;
 esac
 

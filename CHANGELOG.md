@@ -7,6 +7,7 @@ behavior change in a minor or patch release.
 
 ## [Unreleased]
 
+
 ### Added
 - Initial project scaffold: `Core`, `Results`, `Validation`, `Telemetry`, `Caching`,
   `Querydsl`, `Messaging`, `Grpc`, `Auth`, `HealthChecks`, `Logging`, `Extensions`.
@@ -25,8 +26,10 @@ behavior change in a minor or patch release.
   (`Tiki.Grpc.Contracts.Identity/.Wallet/.Transaction/.Compliance/.Integration`), each
   versioned and released independently of `Tiki.Shared` itself (see
   `.github/workflows/publish-grpc-contract.yml`). `Tiki.Grpc.Contracts.Compliance` ships a
-  real `GetVerificationStatus` RPC; the other four are placeholder shapes. See
-  `tools/pack-grpc-contract.sh` and `tools/hash-grpc-contract.sh`.
+  real `GetVerificationStatus` RPC; Identity, Wallet, and Transaction remain
+  placeholder shapes. See `tools/pack-grpc-contract.sh` and
+  `tools/hash-grpc-contract.sh`. Integration's first published shape is
+  `Tiki.Grpc.Contracts.Integration` 0.1.0 below.
 - `Validation/Rules/` — FluentValidation extension methods for universal data-shape checks:
   `MoneyRules` (ISO 4217 minor-unit precision), `PhoneNumberRules` (E.164),
   `EmailRules`, `CountryCurrencyRules` (against `Core/Enums`), `IdentifierRules` (GUID
@@ -71,4 +74,18 @@ behavior change in a minor or patch release.
   package is now permitted in `Tiki.Shared`; a concrete provider (Npgsql, SqlServer,
   Sqlite, ...) still fails the build.
 
+## [grpc-integration-v0.1.0] - 2026-09-02
+
+First publish of `Tiki.Grpc.Contracts.Integration`.
+
+### Added
+- `VeriffService` in `veriff.proto`: `CreateSession`, `GetDecision`,
+  `UpdateSessionStatus`. One proto per provider so KYCAID, Volume, and SmartComply
+  can be siblings in the same owning package.
+
+### Changed
+- Placeholder `IntegrationService` / `integration.proto` replaced by
+  `VeriffService` / `veriff.proto`.
+
 [Unreleased]: https://github.com/tiki/tiki-shared-lib/compare/main...HEAD
+[grpc-integration-v0.1.0]: https://github.com/tiki/tiki-shared-lib/releases/tag/grpc-integration-v0.1.0

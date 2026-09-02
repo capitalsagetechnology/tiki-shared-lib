@@ -41,8 +41,20 @@ public class GeneratedContractShapeTests
     [Fact]
     public void Integration_contract_generates_both_client_stub_and_service_base() =>
         AssertGeneratesBoth(
-            typeof(IntegrationNs.IntegrationService.IntegrationServiceClient),
-            typeof(IntegrationNs.IntegrationService.IntegrationServiceBase));
+            typeof(IntegrationNs.VeriffService.VeriffServiceClient),
+            typeof(IntegrationNs.VeriffService.VeriffServiceBase));
+
+    [Fact]
+    public void Integration_CreateSession_rpc_is_present_on_both_the_stub_and_the_base()
+    {
+        var clientHasIt = typeof(IntegrationNs.VeriffService.VeriffServiceClient)
+            .GetMethods().Any(m => m.Name.StartsWith("CreateSession", StringComparison.Ordinal));
+        var baseHasIt = typeof(IntegrationNs.VeriffService.VeriffServiceBase)
+            .GetMethods().Any(m => m.Name == "CreateSession");
+
+        Assert.True(clientHasIt, "Client stub is missing CreateSession.");
+        Assert.True(baseHasIt, "Service base class is missing CreateSession.");
+    }
 
     [Fact]
     public void Compliance_GetVerificationStatus_rpc_is_present_on_both_the_stub_and_the_base()
