@@ -111,6 +111,19 @@ message TransferReply {
   string fee = 3;
   string reference = 4;
   string complete_message = 5;
+  string account_number = 6;
+  string bank_code = 7;
+  string bank_name = 8;
+  string full_name = 9;
+  string created_at = 10;
+  string currency = 11;
+  string debit_currency = 12;
+  string amount = 13;
+  string narration = 14;
+  int32 requires_approval = 15;
+  int32 is_approved = 16;
+  string approver = 17;
+  map<string, string> meta = 18;
 }
 
 message VerifyTransactionByIdRequest {
@@ -131,6 +144,39 @@ message TransactionVerifyReply {
   string amount = 3;
   string currency = 4;
   string app_fee = 5;
+  string tx_ref = 6;
+  string flw_ref = 7;
+  string device_fingerprint = 8;
+  string charged_amount = 9;
+  string merchant_fee = 10;
+  string processor_response = 11;
+  string auth_model = 12;
+  string ip = 13;
+  string narration = 14;
+  string payment_type = 15;
+  string created_at = 16;
+  int32 account_id = 17;
+  string amount_settled = 18;
+  TransactionCard card = 19;
+  TransactionCustomer customer = 20;
+}
+
+message TransactionCard {
+  string first_6digits = 1;
+  string last_4digits = 2;
+  string issuer = 3;
+  string country = 4;
+  string type = 5;
+  string token = 6;
+  string expiry = 7;
+}
+
+message TransactionCustomer {
+  int32 id = 1;
+  string name = 2;
+  string phone_number = 3;
+  string email = 4;
+  string created_at = 5;
 }
 
 message RefundTransactionRequest {
@@ -156,6 +202,10 @@ message RefundReply {
   string destination = 5;
   string comments = 6;
   string created_at = 7;
+  string flw_ref = 8;
+  string settlement_id = 9;
+  int32 account_id = 10;
+  map<string, string> meta = 11;
 }
 
 message ResendFailedWebhookRequest {

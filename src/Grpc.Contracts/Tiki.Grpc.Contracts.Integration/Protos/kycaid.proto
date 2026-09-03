@@ -12,23 +12,23 @@ service KycaidService {
 
   rpc CreateApplicant (CreateApplicantRequest) returns (ApplicantReply);
   rpc GetApplicant (GetApplicantRequest) returns (ApplicantDetailsReply);
-  rpc UpdateApplicant (UpdateApplicantRequest) returns (ApplicantDetailsReply);
+  rpc UpdateApplicant (UpdateApplicantRequest) returns (UpdateApplicantReply);
 
   rpc CreateAddress (CreateAddressRequest) returns (AddressReply);
   rpc UpdateAddress (UpdateAddressRequest) returns (AddressReply);
-  rpc DeleteAddress (DeleteAddressRequest) returns (AddressReply);
+  rpc DeleteAddress (DeleteAddressRequest) returns (DeleteAddressReply);
 
   rpc CreateAffiliatedPerson (CreateAffiliatedPersonRequest) returns (AffiliatedPersonReply);
   rpc UpdateAffiliatedPerson (UpdateAffiliatedPersonRequest) returns (AffiliatedPersonReply);
-  rpc DeleteAffiliatedPerson (DeleteAffiliatedPersonRequest) returns (AffiliatedPersonReply);
+  rpc DeleteAffiliatedPerson (DeleteAffiliatedPersonRequest) returns (DeleteAffiliatedPersonReply);
 
   rpc CreateFile (CreateFileRequest) returns (FileReply);
   rpc UpdateFile (UpdateFileRequest) returns (FileReply);
 
   rpc CreateDocument (CreateDocumentRequest) returns (DocumentReply);
   rpc GetDocument (GetDocumentRequest) returns (DocumentDetailsReply);
-  rpc UpdateDocument (UpdateDocumentRequest) returns (DocumentReply);
-  rpc DeleteDocument (DeleteDocumentRequest) returns (DocumentReply);
+  rpc UpdateDocument (UpdateDocumentRequest) returns (DocumentIdReply);
+  rpc DeleteDocument (DeleteDocumentRequest) returns (DocumentIdReply);
 
   rpc CreateVerification (CreateVerificationRequest) returns (VerificationReply);
   rpc GetVerification (GetVerificationRequest) returns (VerificationDecisionReply);
@@ -132,6 +132,10 @@ message UpdateApplicantRequest {
   string custom_field_5 = 21;
 }
 
+// Kycaid's real update-applicant response body is just {} - nothing to carry back.
+message UpdateApplicantReply {
+}
+
 message ApplicantDetailsReply {
   string applicant_id = 1;
   string external_applicant_id = 2;
@@ -163,6 +167,11 @@ message ApplicantDetailsReply {
   string custom_field_3 = 28;
   string custom_field_4 = 29;
   string custom_field_5 = 30;
+  // AGE_RESTRICTION, ANONYMIZING_NETWORK, BAD_QUALITY, COMPROMISED_PERSON, COMPULSION,
+  // DIFFERENT_FACES, DOCUMENT_DAMAGED, DOCUMENT_INCOMPLETE, DUPLICATE, EDITED_DOCUMENT,
+  // EXPIRED_DOCUMENT, FAKE_DOCUMENT, FRAUDULENT, IP_MISMATCH, LIMIT_REACHED_OTP,
+  // MULTIPLE_PERSON, NO_SELFIE, OTHER, PROHIBITED_JURISDICTION, QES_MISMATCH,
+  // TAX_ID_REQUIRED, WRONG_DOB, WRONG_DOCUMENT, WRONG_INFO, WRONG_NAME.
   repeated string decline_reasons = 31;
   int32 verifications_count = 32;
 }
@@ -215,6 +224,25 @@ message DeleteAddressRequest {
 }
 
 message AddressReply {
+  // Present on create, empty on update - update's response doesn't echo it back.
+  string applicant_id = 1;
+  string affiliated_person_id = 2;
+  string type = 3;
+  string full_address = 4;
+  string country = 5;
+  string state = 6;
+  string region = 7;
+  string province = 8;
+  string city = 9;
+  string district = 10;
+  string address = 11;
+  string postal_code = 12;
+  string street_name = 13;
+  string building_number = 14;
+  string unit_number = 15;
+}
+
+message DeleteAddressReply {
   string address_id = 1;
 }
 
@@ -256,6 +284,20 @@ message DeleteAffiliatedPersonRequest {
 }
 
 message AffiliatedPersonReply {
+  // Present on create, empty on update - update's response doesn't echo them back.
+  string applicant_id = 1;
+  string type = 2;
+  string first_name = 3;
+  string last_name = 4;
+  string title = 5;
+  double share = 6;
+  string dob = 7;
+  string residence_country = 8;
+  string nationality = 9;
+  string email = 10;
+}
+
+message DeleteAffiliatedPersonReply {
   string affiliated_person_id = 1;
 }
 
@@ -350,6 +392,35 @@ message DeleteDocumentRequest {
 }
 
 message DocumentReply {
+  // Present when set on the underlying record - exactly one of applicant_id/affiliated_person_id
+  // is populated depending on which owns the document.
+  string applicant_id = 1;
+  string affiliated_person_id = 2;
+  string type = 3;
+  string document_number = 4;
+  string additional_number = 5;
+  string issue_date = 6;
+  string expiry_date = 7;
+  string issuing_authority = 8;
+  string card_number = 9;
+  string account_number = 10;
+  repeated string income_sources = 11;
+  string annual_income = 12;
+  string transaction_amount = 13;
+  string transaction_currency = 14;
+  string transaction_datetime = 15;
+  string transaction_purpose = 16;
+  string origin_funds = 17;
+  string front_side_id = 18;
+  string back_side_id = 19;
+  string other_side_1_id = 20;
+  string other_side_2_id = 21;
+  string other_side_3_id = 22;
+}
+
+// Update and delete document both only echo back the id - unlike create, which returns the
+// full document object (see DocumentReply).
+message DocumentIdReply {
   string document_id = 1;
 }
 
@@ -388,6 +459,11 @@ message DocumentDetailsReply {
   string other_side_3 = 32;
   string created_at = 33;
   repeated int32 decline_reason_ids = 34;
+  // AGE_RESTRICTION, ANONYMIZING_NETWORK, BAD_QUALITY, COMPROMISED_PERSON, COMPULSION,
+  // DIFFERENT_FACES, DOCUMENT_DAMAGED, DOCUMENT_INCOMPLETE, DUPLICATE, EDITED_DOCUMENT,
+  // EXPIRED_DOCUMENT, FAKE_DOCUMENT, FRAUDULENT, IP_MISMATCH, LIMIT_REACHED_OTP,
+  // MULTIPLE_PERSON, NO_SELFIE, OTHER, PROHIBITED_JURISDICTION, QES_MISMATCH,
+  // TAX_ID_REQUIRED, WRONG_DOB, WRONG_DOCUMENT, WRONG_INFO, WRONG_NAME.
   repeated string decline_reasons = 35;
 }
 
@@ -467,14 +543,19 @@ message VerificationsReportEntry {
   string service = 7;
   string method = 8;
   string name = 9;
-  string date_of_birth = 10;
+  string dob = 10;
   string country_code = 11;
   string tax_id_number = 12;
   string email = 13;
-  string phone_number = 14;
+  string phone = 14;
   string wallet_address = 15;
   string telegram_username = 16;
   repeated string verification_types = 17;
+  // AGE_RESTRICTION, ANONYMIZING_NETWORK, BAD_QUALITY, COMPROMISED_PERSON, COMPULSION,
+  // DIFFERENT_FACES, DOCUMENT_DAMAGED, DOCUMENT_INCOMPLETE, DUPLICATE, EDITED_DOCUMENT,
+  // EXPIRED_DOCUMENT, FAKE_DOCUMENT, FRAUDULENT, IP_MISMATCH, LIMIT_REACHED_OTP,
+  // MULTIPLE_PERSON, NO_SELFIE, OTHER, PROHIBITED_JURISDICTION, QES_MISMATCH,
+  // TAX_ID_REQUIRED, WRONG_DOB, WRONG_DOCUMENT, WRONG_INFO, WRONG_NAME.
   repeated string decline_reasons = 18;
   int32 processing_time = 19;
   string price = 20;
