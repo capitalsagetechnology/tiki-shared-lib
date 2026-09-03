@@ -45,14 +45,12 @@ service KycaidService {
 // ---- business activities -----------------------------------------------------------------
 
 message GetBusinessActivitiesRequest {
-  // Ledger attribution — never forwarded to KYCAID.
   string business_id = 1;
   string tenant_id = 2;
 }
 
 message Label {
   string label = 1;
-  // ISO 639-1 - EN, RU, or UK.
   string language_code = 2;
 }
 
@@ -229,7 +227,7 @@ message CreateAffiliatedPersonRequest {
   string applicant_id = 4;
   string first_name = 5;
   string last_name = 6;
-  string title = 7;.
+  string title = 7;
   string share = 8;
   string date_of_birth = 9;
   string residence_country = 10;
@@ -361,7 +359,6 @@ message DocumentDetailsReply {
   string affiliated_person_id = 3;
   string type = 4;
   string provider = 5;
-  // new, valid, or invalid.
   string status = 6;
   string comment = 7;
   string document_number = 8;
@@ -557,7 +554,6 @@ message BlacklistPersonMatch {
 }
 
 message SearchBlacklistPersonsReply {
-  // Echoes back the match-scoring settings actually applied (KYCAID's defaults, if none were sent).
   BlacklistSearchParameters parameters = 1;
   repeated BlacklistPersonMatch matches = 2;
 }
