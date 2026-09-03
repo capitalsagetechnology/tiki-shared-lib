@@ -394,7 +394,6 @@ message DocumentDetailsReply {
 // ---- verifications -----------------------------------------------------------------------
 
 message CreateVerificationRequest {
-  // re-sell businessId
   string business_id = 1;
   string tenant_id = 2;
   string applicant_id = 3;
