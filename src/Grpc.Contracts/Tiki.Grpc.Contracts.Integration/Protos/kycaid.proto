@@ -1,0 +1,615 @@
+syntax = "proto3";
+
+option csharp_namespace = "Tiki.Grpc.Contracts.Integration";
+
+package tiki.grpc.contracts.integration;
+
+// KYCAID mesh API owned by the Integration service. Sibling providers live in their own
+// proto files in this package (veriff.proto, flutterwave.proto, volume.proto, smartcomply.proto).
+// Callers compile against this package; they never talk to KYCAID (or any other provider) directly.
+service KycaidService {
+  rpc GetBusinessActivities (GetBusinessActivitiesRequest) returns (GetBusinessActivitiesReply);
+
+  rpc CreateApplicant (CreateApplicantRequest) returns (ApplicantReply);
+  rpc GetApplicant (GetApplicantRequest) returns (ApplicantDetailsReply);
+  rpc UpdateApplicant (UpdateApplicantRequest) returns (ApplicantDetailsReply);
+
+  rpc CreateAddress (CreateAddressRequest) returns (AddressReply);
+  rpc UpdateAddress (UpdateAddressRequest) returns (AddressReply);
+  rpc DeleteAddress (DeleteAddressRequest) returns (AddressReply);
+
+  rpc CreateAffiliatedPerson (CreateAffiliatedPersonRequest) returns (AffiliatedPersonReply);
+  rpc UpdateAffiliatedPerson (UpdateAffiliatedPersonRequest) returns (AffiliatedPersonReply);
+  rpc DeleteAffiliatedPerson (DeleteAffiliatedPersonRequest) returns (AffiliatedPersonReply);
+
+  rpc CreateFile (CreateFileRequest) returns (FileReply);
+  rpc UpdateFile (UpdateFileRequest) returns (FileReply);
+
+  rpc CreateDocument (CreateDocumentRequest) returns (DocumentReply);
+  rpc GetDocument (GetDocumentRequest) returns (DocumentDetailsReply);
+  rpc UpdateDocument (UpdateDocumentRequest) returns (DocumentReply);
+  rpc DeleteDocument (DeleteDocumentRequest) returns (DocumentReply);
+
+  rpc CreateVerification (CreateVerificationRequest) returns (VerificationReply);
+  rpc GetVerification (GetVerificationRequest) returns (VerificationDecisionReply);
+  rpc UpdateVerificationStatus (UpdateVerificationStatusRequest) returns (VerificationStatusReply);
+  rpc GetVerificationReport (GetVerificationReportRequest) returns (VerificationReportReply);
+  rpc GetVerificationsReport (GetVerificationsReportRequest) returns (GetVerificationsReportReply);
+
+  rpc CreateAdverseMediaCheck (CreateAdverseMediaCheckRequest) returns (AdverseMediaCheckReply);
+  rpc SearchBlacklistPersons (SearchBlacklistPersonsRequest) returns (SearchBlacklistPersonsReply);
+  rpc SearchBlacklistDocuments (SearchBlacklistDocumentsRequest) returns (SearchBlacklistDocumentsReply);
+  rpc SearchBlacklistTaxIds (SearchBlacklistTaxIdsRequest) returns (SearchBlacklistTaxIdsReply);
+}
+
+// ---- business activities -----------------------------------------------------------------
+
+message GetBusinessActivitiesRequest {
+  // Ledger attribution — never forwarded to KYCAID.
+  string business_id = 1;
+  string tenant_id = 2;
+}
+
+message Label {
+  string label = 1;
+  // ISO 639-1 - EN, RU, or UK.
+  string language_code = 2;
+}
+
+message BusinessActivity {
+  string business_activity_id = 1;
+  repeated Label labels = 2;
+}
+
+message BusinessCategory {
+  string business_category_id = 1;
+  repeated Label labels = 2;
+  repeated BusinessActivity activities = 3;
+}
+
+message GetBusinessActivitiesReply {
+  repeated BusinessCategory categories = 1;
+}
+
+// ---- applicants -----------------------------------------------------------------------------
+
+message CreateApplicantRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string type = 3;
+  string first_name = 4;
+  string middle_name = 5;
+  string last_name = 6;
+  string date_of_birth = 7;
+  string gender = 8;
+  bool pep = 9;
+  string residence_country = 10;
+  string nationality = 11;
+  string company_name = 12;
+  string business_activity_id = 13;
+  string registration_country = 14;
+  string email = 15;
+  string phone_number = 16;
+  string telegram_username = 17;
+  string wallet_address = 18;
+  string external_applicant_id = 19;
+  string custom_field_1 = 20;
+  string custom_field_2 = 21;
+  string custom_field_3 = 22;
+  string custom_field_4 = 23;
+  string custom_field_5 = 24;
+}
+
+message ApplicantReply {
+  string applicant_id = 1;
+}
+
+message GetApplicantRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string applicant_id = 3;
+}
+
+message UpdateApplicantRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string applicant_id = 3;
+  string first_name = 4;
+  string middle_name = 5;
+  string last_name = 6;
+  string date_of_birth = 7;
+  string gender = 8;
+  bool pep = 9;
+  string residence_country = 10;
+  string nationality = 11;
+  string email = 12;
+  string phone_number = 13;
+  string telegram_username = 14;
+  string wallet_address = 15;
+  string external_applicant_id = 16;
+  string custom_field_1 = 17;
+  string custom_field_2 = 18;
+  string custom_field_3 = 19;
+  string custom_field_4 = 20;
+  string custom_field_5 = 21;
+}
+
+message ApplicantDetailsReply {
+  string applicant_id = 1;
+  string external_applicant_id = 2;
+  string type = 3;
+  string created_at = 4;
+  string profile_status = 5;
+  string profile_comment = 6;
+  string first_name = 7;
+  string origin_first_name = 8;
+  string middle_name = 9;
+  string origin_middle_name = 10;
+  string last_name = 11;
+  string origin_last_name = 12;
+  string residence_country = 13;
+  string nationality = 14;
+  string company_name = 15;
+  string business_activity_id = 16;
+  string registration_country = 17;
+  string date_of_birth = 18;
+  string gender = 19;
+  string email = 20;
+  string phone_number = 21;
+  string phone_status = 22;
+  string wallet_address = 23;
+  string telegram_username = 24;
+  bool pep = 25;
+  string custom_field_1 = 26;
+  string custom_field_2 = 27;
+  string custom_field_3 = 28;
+  string custom_field_4 = 29;
+  string custom_field_5 = 30;
+  repeated string decline_reasons = 31;
+  int32 verifications_count = 32;
+}
+
+// ---- addresses ------------------------------------------------------------------------------
+
+message CreateAddressRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string applicant_id = 3;
+  string affiliated_person_id = 4;
+  string type = 5;
+  string full_address = 6;
+  string country = 7;
+  string state = 8;
+  string region = 9;
+  string province = 10;
+  string city = 11;
+  string district = 12;
+  string address = 13;
+  string postal_code = 14;
+  string street_name = 15;
+  string building_number = 16;
+  string unit_number = 17;
+}
+
+message UpdateAddressRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string address_id = 3;
+  string type = 4;
+  string full_address = 5;
+  string country = 6;
+  string state = 7;
+  string region = 8;
+  string province = 9;
+  string city = 10;
+  string district = 11;
+  string address = 12;
+  string postal_code = 13;
+  string street_name = 14;
+  string building_number = 15;
+  string unit_number = 16;
+}
+
+message DeleteAddressRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string address_id = 3;
+}
+
+message AddressReply {
+  string address_id = 1;
+}
+
+// ---- affiliated persons -----------------------------------------------------------------------
+
+message CreateAffiliatedPersonRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string type = 3;
+  string applicant_id = 4;
+  string first_name = 5;
+  string last_name = 6;
+  string title = 7;.
+  string share = 8;
+  string date_of_birth = 9;
+  string residence_country = 10;
+  string nationality = 11;
+  string email = 12;
+}
+
+message UpdateAffiliatedPersonRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string affiliated_person_id = 3;
+  string first_name = 4;
+  string last_name = 5;
+  string title = 6;
+  string share = 7;
+  string date_of_birth = 8;
+  string residence_country = 9;
+  string nationality = 10;
+  string email = 11;
+}
+
+message DeleteAffiliatedPersonRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string affiliated_person_id = 3;
+}
+
+message AffiliatedPersonReply {
+  string affiliated_person_id = 1;
+}
+
+// ---- files ------------------------------------------------------------------------------------
+
+message CreateFileRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  bytes file_content = 3;
+  string file_name = 4;
+  string content_type = 5;
+}
+
+message UpdateFileRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string file_id = 3;
+  bytes file_content = 4;
+  string file_name = 5;
+  string content_type = 6;
+}
+
+message FileReply {
+  string file_id = 1;
+}
+
+// ---- documents ----------------------------------------------------------------------------
+
+message CreateDocumentRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string applicant_id = 3;
+  string affiliated_person_id = 4;
+  string type = 5;
+  string document_number = 6;
+  string additional_number = 7;
+  string issue_date = 8;
+  string expiry_date = 9;
+  string issuing_authority = 10;
+  string card_number = 11;
+  string account_number = 12;
+  repeated string income_sources = 13;
+  string annual_income = 14;
+  string transaction_amount = 15;
+  string transaction_currency = 16;
+  string transaction_datetime = 17;
+  string transaction_purpose = 18;
+  string origin_funds = 19;
+  string front_side_id = 20;
+  string back_side_id = 21;
+  string other_side_1_id = 22;
+  string other_side_2_id = 23;
+  string other_side_3_id = 24;
+}
+
+message GetDocumentRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string document_id = 3;
+}
+
+message UpdateDocumentRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string document_id = 3;
+  string type = 4;
+  string document_number = 5;
+  string additional_number = 6;
+  string issue_date = 7;
+  string expiry_date = 8;
+  string issuing_authority = 9;
+  repeated string income_sources = 10;
+  string annual_income = 11;
+  string transaction_amount = 12;
+  string transaction_currency = 13;
+  string transaction_datetime = 14;
+  string transaction_purpose = 15;
+  string origin_funds = 16;
+  string card_number = 17;
+  string account_number = 18;
+  string front_side_id = 19;
+  string back_side_id = 20;
+  string other_side_1_id = 21;
+  string other_side_2_id = 22;
+  string other_side_3_id = 23;
+}
+
+message DeleteDocumentRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string document_id = 3;
+}
+
+message DocumentReply {
+  string document_id = 1;
+}
+
+message DocumentDetailsReply {
+  string document_id = 1;
+  string applicant_id = 2;
+  string affiliated_person_id = 3;
+  string type = 4;
+  string provider = 5;
+  // new, valid, or invalid.
+  string status = 6;
+  string comment = 7;
+  string document_number = 8;
+  string additional_number = 9;
+  string issue_date = 10;
+  string expiry_date = 11;
+  string issuing_authority = 12;
+  repeated string income_sources = 13;
+  string annual_income = 14;
+  string transaction_amount = 15;
+  string transaction_currency = 16;
+  string transaction_datetime = 17;
+  string transaction_purpose = 18;
+  string origin_funds = 19;
+  string card_number = 20;
+  string account_number = 21;
+  string portrait = 22;
+  string front_side_id = 23;
+  string front_side = 24;
+  string back_side_id = 25;
+  string back_side = 26;
+  string other_side_1_id = 27;
+  string other_side_1 = 28;
+  string other_side_2_id = 29;
+  string other_side_2 = 30;
+  string other_side_3_id = 31;
+  string other_side_3 = 32;
+  string created_at = 33;
+  repeated int32 decline_reason_ids = 34;
+  repeated string decline_reasons = 35;
+}
+
+// ---- verifications -----------------------------------------------------------------------
+
+message CreateVerificationRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string applicant_id = 3;
+  string form_id = 4;
+  string language_code = 5;
+}
+
+message VerificationReply {
+  string verification_id = 1;
+}
+
+message GetVerificationRequest {
+  string verification_id = 1;
+  string business_id = 2;
+  string tenant_id = 3;
+}
+
+message VerificationCheckResult {
+  string status = 1;
+  bool verified = 2;
+}
+
+message VerificationDecisionReply {
+  string verification_id = 1;
+  string applicant_id = 2;
+  string status = 3;
+  bool verified = 4;
+  map<string, VerificationCheckResult> verifications = 5;
+}
+
+message UpdateVerificationStatusRequest {
+  string verification_id = 1;
+  string verification_status = 2;
+  bool callback_enabled = 3;
+  bool project_owner_email_enabled = 4;
+  bool applicant_email_enabled = 5;
+  string business_id = 6;
+  string tenant_id = 7;
+}
+
+message VerificationStatusReply {
+  string verification_id = 1;
+  string verification_status = 2;
+}
+
+message GetVerificationReportRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string verification_id = 3;
+}
+
+message VerificationReportReply {
+  string report_url = 1;
+}
+
+message GetVerificationsReportRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string date = 3;
+  int32 offset = 4;
+  int32 count = 5;
+}
+
+message VerificationsReportEntry {
+  string created_at = 1;
+  string verification_id = 2;
+  string applicant_id = 3;
+  string external_applicant_id = 4;
+  string form_id = 5;
+  string status = 6;
+  string service = 7;
+  string method = 8;
+  string name = 9;
+  string date_of_birth = 10;
+  string country_code = 11;
+  string tax_id_number = 12;
+  string email = 13;
+  string phone_number = 14;
+  string wallet_address = 15;
+  string telegram_username = 16;
+  repeated string verification_types = 17;
+  repeated string decline_reasons = 18;
+  int32 processing_time = 19;
+  string price = 20;
+  string mode = 21;
+}
+
+message GetVerificationsReportReply {
+  repeated VerificationsReportEntry entries = 1;
+}
+
+// ---- adverse media & blacklist checks -----------------------------------------------------
+
+message CreateAdverseMediaCheckRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  repeated string primary_keywords = 3;
+  repeated string secondary_keywords = 4;
+  string callback_url = 5;
+}
+
+message AdverseMediaCheckReply {
+  repeated string primary_keywords = 1;
+  repeated string secondary_keywords = 2;
+  string callback_url = 3;
+}
+
+message SearchBlacklistPersonsRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string full_name = 3;
+  string first_name = 4;
+  string last_name = 5;
+  string middle_name = 6;
+  string date_of_birth = 7;
+  string residence_country = 8;
+  string gender = 9;
+  string name_match_threshold = 10;
+  string name_match_weight = 11;
+  bool dob_match_enabled = 12;
+  string dob_match_weight = 13;
+  bool residence_country_match_enabled = 14;
+  string residence_country_match_weight = 15;
+  bool gender_match_enabled = 16;
+  string gender_match_weight = 17;
+  repeated string bdb_types = 18;
+}
+
+message BlacklistSearchParameters {
+  string name_match_threshold = 1;
+  string name_match_weight = 2;
+  bool dob_match_enabled = 3;
+  string dob_match_weight = 4;
+  bool residence_country_match_enabled = 5;
+  string residence_country_match_weight = 6;
+  bool gender_match_enabled = 7;
+  string gender_match_weight = 8;
+}
+
+message BlacklistPersonMatch {
+  string full_name = 1;
+  string origin_full_name = 2;
+  string first_name = 3;
+  string origin_first_name = 4;
+  string last_name = 5;
+  string origin_last_name = 6;
+  string middle_name = 7;
+  string origin_middle_name = 8;
+  string date_of_birth = 9;
+  string residence_country = 10;
+  string gender = 11;
+  string description = 12;
+  string bdb_name = 13;
+  repeated string aliases = 14;
+  repeated string addresses = 15;
+  string name_match_score = 16;
+  string total_match_score = 17;
+}
+
+message SearchBlacklistPersonsReply {
+  // Echoes back the match-scoring settings actually applied (KYCAID's defaults, if none were sent).
+  BlacklistSearchParameters parameters = 1;
+  repeated BlacklistPersonMatch matches = 2;
+}
+
+message SearchBlacklistDocumentsRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string document_number = 3;
+  string document_type = 4;
+  string document_country = 5;
+  repeated string bdb_types = 6;
+}
+
+message BlacklistDocumentMatch {
+  string document_number = 1;
+  string document_type = 2;
+  string document_country = 3;
+  string description = 4;
+  string bdb_name = 5;
+  repeated string bdb_type = 6;
+}
+
+message SearchBlacklistDocumentsReply {
+  repeated BlacklistDocumentMatch matches = 1;
+}
+
+message SearchBlacklistTaxIdsRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string tax_id_number = 3;
+  string tax_id_country = 4;
+  repeated string bdb_types = 5;
+}
+
+message BlacklistTaxIdMatch {
+  string full_name = 1;
+  string origin_full_name = 2;
+  string first_name = 3;
+  string origin_first_name = 4;
+  string last_name = 5;
+  string origin_last_name = 6;
+  string middle_name = 7;
+  string origin_middle_name = 8;
+  string residence_country = 9;
+  string date_of_birth = 10;
+  string gender = 11;
+  string description = 12;
+  string bdb_name = 13;
+  repeated string bdb_type = 14;
+  int32 accuracy = 15;
+}
+
+message SearchBlacklistTaxIdsReply {
+  repeated BlacklistTaxIdMatch matches = 1;
+}
