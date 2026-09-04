@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Tiki.Shared.Core.Enums;
 
 /// <summary>
@@ -6,6 +8,8 @@ namespace Tiki.Shared.Core.Enums;
 /// (eligibility, risk tier, routing) beyond "which country". Extend it as new markets
 /// are added; it is never a place for a per-service subset.
 /// </summary>
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum CountryCode
 {
     Unspecified = 0,
@@ -24,4 +28,5 @@ public enum CountryCode
     CM,
     EG,
     MA,
+    ALL
 }
