@@ -72,7 +72,7 @@ public sealed class PackageContentsTests : IAsyncLifetime
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToArray();
 
-        Assert.Equal(["flutterwave.proto", "kycaid.proto", "smartcomply.proto", "veriff.proto", "volume.proto"], protoEntries);
+        Assert.Equal(["bitso.proto", "flutterwave.proto", "juno.proto", "kycaid.proto", "smartcomply.proto", "veriff.proto", "volume.proto"], protoEntries);
     }
 
     [Theory]
@@ -123,7 +123,7 @@ public sealed class PackageContentsTests : IAsyncLifetime
     {
         // Integration is one owning package with one proto per provider, not one
         // catch-all integration.proto.
-        "Integration" => ["veriff", "volume", "smartcomply", "flutterwave", "kycaid"],
+        "Integration" => ["veriff", "volume", "smartcomply", "flutterwave", "kycaid", "bitso", "juno"],
         _ => [service.ToLowerInvariant()],
     };
 
