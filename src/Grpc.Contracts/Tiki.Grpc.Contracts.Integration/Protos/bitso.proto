@@ -1,0 +1,375 @@
+syntax = "proto3";
+
+option csharp_namespace = "Tiki.Grpc.Contracts.Integration";
+
+package tiki.grpc.contracts.integration;
+
+// Bitso mesh API owned by the Integration service. Covers two rails: the legacy Bitso SPEI
+// transaction API (MXN pay-ins - minting an additional CLABE and, staging-only, simulating a
+// deposit against it) and the Bitso Trading API (payouts and their supporting operations -
+// withdrawals, FX quotes, beneficiary registration, bank lookups, PIX preview).
+service BitsoService {
+  rpc CreateSpeiClabe (CreateSpeiClabeRequest) returns (SpeiClabeReply);
+  rpc SimulateSpeiDeposit (SimulateSpeiDepositRequest) returns (SpeiDepositSimulationReply);
+  rpc GetSpeiClabe (GetSpeiClabeRequest) returns (SpeiClabeReply);
+  rpc UpdateClabeStatus (UpdateClabeStatusRequest) returns (SpeiClabeReply);
+  rpc GetClabeLimits (GetClabeLimitsRequest) returns (ClabeLimitsReply);
+  rpc CreateWithdrawal (CreateWithdrawalRequest) returns (WithdrawalReply);
+  rpc GetWithdrawal (GetWithdrawalRequest) returns (WithdrawalReply);
+  rpc CreateCurrencyConversion (CreateCurrencyConversionRequest) returns (CurrencyConversionReply);
+  rpc ConfirmCurrencyConversion (ConfirmCurrencyConversionRequest) returns (ConfirmCurrencyConversionReply);
+  rpc GetCurrencyConversion (GetCurrencyConversionRequest) returns (CurrencyConversionReply);
+  rpc GetBalance (GetBalanceRequest) returns (GetBalanceReply);
+  rpc CreateConsumerContact (CreateConsumerContactRequest) returns (ConsumerContactReply);
+  rpc GetBanks (BitsoGetBanksRequest) returns (BitsoGetBanksReply);
+  rpc PreviewWithdrawal (PreviewWithdrawalRequest) returns (WithdrawalPreviewReply);
+}
+
+// ---- legacy Bitso SPEI transaction pay-ins ----
+
+message CreateSpeiClabeRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+}
+
+// A stable, well-defined object - modeled as a nested message rather than a map.
+message DepositMaximumAmounts {
+  string operation = 1;
+  string daily = 2;
+  string weekly = 3;
+  string monthly = 4;
+}
+
+message SpeiClabeReply {
+  string clabe = 1;
+  string type = 2;
+  string status = 3;
+  string created_at = 4;
+  // Null on Bitso's side means no limit - empty string here means the same.
+  string deposit_minimum_amount = 5;
+  // Unset means Bitso returned null (no limits set for this CLABE).
+  DepositMaximumAmounts deposit_maximum_amounts = 6;
+  string updated_at = 7;
+}
+
+message SimulateSpeiDepositRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string amount = 3;
+  string receiver_clabe = 4;
+  string receiver_name = 5;
+  string sender_name = 6;
+}
+
+message SpeiDepositSimulationReply {
+  string amount = 1;
+  string tracking_code = 2;
+  string tracking_key = 3;
+  string sender_clabe = 4;
+  string sender_name = 5;
+  string sender_curp = 6;
+  string receiver_clabe = 7;
+  string receiver_name = 8;
+  string receiver_curp = 9;
+  string created_at = 10;
+}
+
+message GetSpeiClabeRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string clabe = 3;
+}
+
+message UpdateClabeStatusRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string clabe = 3;
+  // One of: ENABLED, DISABLED.
+  string status = 4;
+}
+
+message GetClabeLimitsRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string clabe = 3;
+}
+
+message ClabeLimitsConfiguration {
+  string deposit_minimum_amount = 1;
+  DepositMaximumAmounts deposit_maximum_amounts = 2;
+}
+
+// Shared shape for both consumed_amounts and available_amounts.
+message ClabeLimitsAmounts {
+  string daily = 1;
+  string weekly = 2;
+  string monthly = 3;
+}
+
+message ClabeLimitsDeposit {
+  ClabeLimitsConfiguration configuration = 1;
+  ClabeLimitsAmounts consumed_amounts = 2;
+  ClabeLimitsAmounts available_amounts = 3;
+}
+
+message ClabeLimitsReply {
+  ClabeLimitsDeposit deposit = 1;
+}
+
+// ---- Bitso Trading API: payouts and supporting operations ----
+
+message CreateWithdrawalRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string amount = 3;
+  string currency = 4;
+  string protocol = 5;
+  string numeric_ref = 6;
+  string notes_ref = 7;
+  string rfc = 8;
+  string clabe = 9;
+  string beneficiary = 10;
+  string origin_id = 11;
+  optional int32 contact_id = 12;
+  string institution_code = 13;
+  string end_to_end_id = 14;
+  string payer_message = 15;
+  string payee_tax_id = 16;
+}
+
+message GetWithdrawalRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string wid = 3;
+}
+
+// A stable, well-defined object (one side of a PIX withdrawal's account detail)
+message WithdrawalParty {
+  string account_number = 1;
+  string bank_code = 2;
+  string tax_id = 3;
+  string name = 4;
+  string bank_name = 5;
+  string bank_branch = 6;
+}
+
+// Covers both the MXN SPEI response shape and the PIX response shape - whichever rail answered,
+// only its fields are populated; the other set stays empty/default.
+message WithdrawalReply {
+  string wid = 1;
+  string status = 2;
+  string created_at = 3;
+  string currency = 4;
+  string amount = 5;
+  // PIX-only top-level fields - empty on the MXN SPEI shape.
+  string method = 6;
+  string method_name = 7;
+  string asset = 8;
+  string network = 9;
+  string protocol = 10;
+  string integration = 11;
+  // MXN SPEI details.* - empty on the PIX shape.
+  string origin_id = 12;
+  string clave_de_rastreo = 13;
+  string huella_digital = 14;
+  string beneficiary_name = 15;
+  string beneficiary_clabe = 16;
+  string cep_link = 17;
+  string fail_reason = 18;
+  // PIX details.* - empty/unset on the MXN SPEI shape.
+  string end_to_end_id = 19;
+  optional bool is_reversal = 20;
+  WithdrawalParty payee = 21;
+  WithdrawalParty payer = 22;
+  // The reversed transaction's original end_to_end_id - only present when is_reversal is true.
+  string original_end_to_end_id = 23;
+}
+
+message CreateCurrencyConversionRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string from_currency = 3;
+  string to_currency = 4;
+  string spend_amount = 5;
+  string receive_amount = 6;
+}
+
+message EstimatedSlippage {
+  string value = 1;
+  string level = 2;
+  string message = 3;
+}
+
+// Shared by the create-quote (POST) and get-status (GET) calls - each returns a different subset
+// of these fields: status is only ever set by get-status; estimated_slippage/padding/
+// next_recurrent_events are only ever set by create-quote.
+message CurrencyConversionReply {
+  string id = 1;
+  string from_amount = 2;
+  string from_currency = 3;
+  string to_amount = 4;
+  string to_currency = 5;
+  EstimatedSlippage estimated_slippage = 6;
+  // Epoch milliseconds.
+  int64 created = 7;
+  int64 expires = 8;
+  string rate = 9;
+  string plain_rate = 10;
+  string rate_currency = 11;
+  string padding = 12;
+  string book = 13;
+  // Variable, recurrence-period-named keys (e.g. WEEKLY/DAILY/MONTHLY) - kept as a map rather
+  // than a fixed shape.
+  map<string, int64> next_recurrent_events = 14;
+  // One of: open, queued, completed, failed. Only set on the get-status response.
+  string status = 15;
+}
+
+message ConfirmCurrencyConversionRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string quote_id = 3;
+}
+
+message ConfirmCurrencyConversionReply {
+  string oid = 1;
+}
+
+message GetCurrencyConversionRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string conversion_id = 3;
+}
+
+message GetBalanceRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+}
+
+message BalanceEntry {
+  string currency = 1;
+  string total = 2;
+  string locked = 3;
+  // Computed by Bitso on read (available = total - locked), not stored.
+  string available = 4;
+}
+
+message GetBalanceReply {
+  repeated BalanceEntry balances = 1;
+}
+
+message ConsumerContactTaxonomy {
+  string network = 1;
+  string asset = 2;
+  string protocol = 3;
+  string integration = 4;
+  string currency = 5;
+}
+
+// Destination VASP identity for travel rule - Bitso's docs: "will contain one of did or name,
+// both are optional".
+message TravelRuleVasp {
+  string did = 1;
+  string name = 2;
+}
+
+message TravelRuleBeneficiary {
+  string name = 1;
+  // One of: NATURAL, LEGAL.
+  string type = 2;
+}
+
+message TravelRule {
+  TravelRuleVasp vasp = 1;
+  TravelRuleBeneficiary beneficiary = 2;
+}
+
+// A stable, well-defined object - modeled as a nested message rather than flattened fields.
+message ConsumerContactCompliance {
+  TravelRule travel_rule = 1;
+}
+
+message CreateConsumerContactRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string alias = 3;
+  ConsumerContactTaxonomy taxonomy = 4;
+  map<string, string> details = 5;
+  // Optional per Bitso's docs.
+  ConsumerContactCompliance compliance = 6;
+}
+
+message NamedValue {
+  string name = 1;
+  string value = 2;
+}
+
+message ConsumerContactDetailField {
+  string name = 1;
+  string value = 2;
+}
+
+message ConsumerContactReply {
+  int32 contact_id = 1;
+  string alias = 2;
+  ConsumerContactTaxonomy taxonomy = 3;
+  string currency = 4;
+  // Confirmed via a real example - an array of {name, value} pairs.
+  repeated ConsumerContactDetailField details = 5;
+  string created = 6;
+  ConsumerContactCompliance compliance = 7;
+}
+
+message BitsoGetBanksRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  // ISO 3166-1 alpha-2, e.g. "mx". Valid values confirmed: mx, br, co.
+  string country_code = 3;
+}
+
+message BankAccountType {
+  string code = 1;
+  string name = 2;
+  int32 min_address_length = 3;
+  int32 max_address_length = 4;
+}
+
+message Bank {
+  int32 id = 1;
+  string code = 2;
+  string country_code = 3;
+  string name = 4;
+  bool is_active = 5;
+  repeated BankAccountType account_types = 6;
+}
+
+message BitsoGetBanksReply {
+  repeated Bank banks = 1;
+}
+
+// Exactly one of (pix_key, optionally with pix_key_type) or refund_id must be set: a regular
+// withdrawal preview identifies the payee by Pix key, an outbound reversal preview identifies the
+// original deposit to refund by its fid instead and sends no Pix key at all.
+message PreviewWithdrawalRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string currency = 3;
+  string protocol = 4;
+  string pix_key = 5;
+  // One of: CPF, CNPJ, PHONE, EMAIL, EVP.
+  string pix_key_type = 6;
+  // Outbound reversal only - the original pay-in's fid to refund, in place of pix_key/pix_key_type.
+  string refund_id = 7;
+}
+
+message WithdrawalPreviewReply {
+  string pix_key_type = 1;
+  string pix_key = 2;
+  repeated NamedValue account_information = 3;
+  // From payment_information - end_to_end_id feeds into a subsequent CreateWithdrawal call for
+  // PIX; that orchestration is left to the caller.
+  string end_to_end_id = 4;
+  string first_schedulable_time = 5;
+  // Seen value: ["editable"].
+  repeated string amount_properties = 6;
+}

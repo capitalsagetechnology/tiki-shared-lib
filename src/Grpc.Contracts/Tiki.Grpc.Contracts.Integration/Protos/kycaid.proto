@@ -4,9 +4,7 @@ option csharp_namespace = "Tiki.Grpc.Contracts.Integration";
 
 package tiki.grpc.contracts.integration;
 
-// KYCAID mesh API owned by the Integration service. Sibling providers live in their own
-// proto files in this package (veriff.proto, flutterwave.proto, volume.proto, smartcomply.proto).
-// Callers compile against this package; they never talk to KYCAID (or any other provider) directly.
+// KYCAID mesh API owned by the Integration service.
 service KycaidService {
   rpc GetBusinessActivities (GetBusinessActivitiesRequest) returns (GetBusinessActivitiesReply);
 
