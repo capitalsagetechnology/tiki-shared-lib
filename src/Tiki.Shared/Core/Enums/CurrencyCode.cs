@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Tiki.Shared.Core.Enums;
 
 /// <summary>
@@ -5,6 +7,8 @@ namespace Tiki.Shared.Core.Enums;
 /// Universal, non-decision vocabulary only — no FX policy, no settlement rules; those are
 /// owned by whichever service decides them.
 /// </summary>
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum CurrencyCode
 {
     Unspecified = 0,
