@@ -25,7 +25,8 @@ behavior change in a minor or patch release.
   (`Tiki.Grpc.Contracts.Identity/.Wallet/.Transaction/.Compliance/.Integration`), each
   versioned and released independently of `Tiki.Shared` itself (see
   `.github/workflows/publish-grpc-contract.yml`). `Tiki.Grpc.Contracts.Compliance` ships a
-  real `GetVerificationStatus` RPC; the other four are placeholder shapes. See
+  real `GetVerificationStatus` RPC and `Tiki.Grpc.Contracts.Wallet` ships a real
+  `CreateWallet` RPC; the other three are still placeholder shapes. See
   `tools/pack-grpc-contract.sh` and `tools/hash-grpc-contract.sh`.
 - `Validation/Rules/` — FluentValidation extension methods for universal data-shape checks:
   `MoneyRules` (ISO 4217 minor-unit precision), `PhoneNumberRules` (E.164),
@@ -70,5 +71,11 @@ behavior change in a minor or patch release.
   Update to `build-test.yml`'s disallowed-package check: the base `Microsoft.EntityFrameworkCore`
   package is now permitted in `Tiki.Shared`; a concrete provider (Npgsql, SqlServer,
   Sqlite, ...) still fails the build.
+- `Tiki.Grpc.Contracts.Wallet` — replaced the placeholder `Ping` RPC with a real
+  `CreateWallet(CreateWalletRequest) returns (CreateWalletResponse)`, taking an
+  `account_id` and returning the new wallet's `id`, `account_id`, `status`
+  (`WalletStatus` enum: `Unspecified`/`Active`/`Frozen`/`Closed`), and `created_at`
+  (`google.protobuf.Timestamp`). Not yet published — no `grpc-wallet-v*` tag has been
+  cut, so this ships at the existing `0.1.0` with no version bump required.
 
 [Unreleased]: https://github.com/tiki/tiki-shared-lib/compare/main...HEAD

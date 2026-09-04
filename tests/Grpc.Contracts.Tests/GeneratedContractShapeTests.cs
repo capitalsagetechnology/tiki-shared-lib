@@ -66,6 +66,28 @@ public class GeneratedContractShapeTests
             names);
     }
 
+    [Fact]
+    public void Wallet_CreateWallet_rpc_is_present_on_both_the_stub_and_the_base()
+    {
+        var clientHasIt = typeof(WalletNs.WalletService.WalletServiceClient)
+            .GetMethods().Any(m => m.Name.StartsWith("CreateWallet", StringComparison.Ordinal));
+        var baseHasIt = typeof(WalletNs.WalletService.WalletServiceBase)
+            .GetMethods().Any(m => m.Name == "CreateWallet");
+
+        Assert.True(clientHasIt, "Client stub is missing CreateWallet.");
+        Assert.True(baseHasIt, "Service base class is missing CreateWallet.");
+    }
+
+    [Fact]
+    public void Wallet_WalletStatus_enum_has_the_specified_members()
+    {
+        var names = Enum.GetNames<WalletNs.WalletStatus>();
+
+        Assert.Equal(
+            new[] { "Unspecified", "Active", "Frozen", "Closed" },
+            names);
+    }
+
     private static void AssertGeneratesBoth(Type clientType, Type baseType)
     {
         // global:: — this file's own namespace, Tiki.Grpc.Contracts.Tests, shadows the

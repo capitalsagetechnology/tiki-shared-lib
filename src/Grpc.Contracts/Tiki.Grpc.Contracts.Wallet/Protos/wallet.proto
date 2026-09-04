@@ -4,14 +4,28 @@ option csharp_namespace = "Tiki.Grpc.Contracts.Wallet";
 
 package tiki.grpc.contracts.wallet;
 
-// Placeholder contract — real RPCs to follow. Owning service: Wallet.
+import "google/protobuf/timestamp.proto";
+
+// Owning service: Wallet. This package carries both the client stub every caller
+// consumes and the service base class Wallet's own implementation derives from.
 service WalletService {
-  rpc Ping (PingRequest) returns (PingResponse);
+  rpc CreateWallet (CreateWalletRequest) returns (CreateWalletResponse);
 }
 
-message PingRequest {
+message CreateWalletRequest {
+  string account_id = 1;
 }
 
-message PingResponse {
-  bool ok = 1;
+message CreateWalletResponse {
+  string id = 1;
+  string account_id = 2;
+  WalletStatus status = 3;
+  google.protobuf.Timestamp created_at = 4;
+}
+
+enum WalletStatus {
+  WALLET_STATUS_UNSPECIFIED = 0;
+  WALLET_STATUS_ACTIVE = 1;
+  WALLET_STATUS_FROZEN = 2;
+  WALLET_STATUS_CLOSED = 3;
 }
