@@ -5,6 +5,9 @@
 # drift test. If the published contract's shape ever changes without a version bump, the
 # hash recomputed here will stop matching the one pasted there — that's the point.
 #
+# Integration owns multiple provider protos in one package; this script hashes every .proto
+# in that package's Protos/ directory and prints one combined digest.
+#
 # This script does not run any drift test itself — that belongs in the consuming service's
 # own repo, not here. What this repo checks about its own packages lives in
 # tests/Grpc.Contracts.Tests/PackageContentsTests.cs (what actually ships), separately.
@@ -25,20 +28,32 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 case "$(echo "$1" | tr '[:upper:]' '[:lower:]')" in
-  identity)    SERVICE="Identity";    PROTO_FILE="identity.proto" ;;
-  wallet)      SERVICE="Wallet";      PROTO_FILE="wallet.proto" ;;
-  transaction) SERVICE="Transaction"; PROTO_FILE="transaction.proto" ;;
-  compliance)  SERVICE="Compliance";  PROTO_FILE="compliance.proto" ;;
-  integration) SERVICE="Integration"; PROTO_FILE="veriff.proto" ;;
+  identity)    SERVICE="Identity" ;;
+  wallet)      SERVICE="Wallet" ;;
+  transaction) SERVICE="Transaction" ;;
+  compliance)  SERVICE="Compliance" ;;
+  integration) SERVICE="Integration" ;;
   *) echo "error: unknown service '$1'" >&2; usage ;;
 esac
 
 PROJECT_DIR="$REPO_ROOT/src/Grpc.Contracts/Tiki.Grpc.Contracts.$SERVICE"
 CSPROJ="$PROJECT_DIR/Tiki.Grpc.Contracts.$SERVICE.csproj"
 PROTOS_DIR="$PROJECT_DIR/Protos"
-PROTO_PATH="$PROTOS_DIR/$PROTO_FILE"
 
-[ -f "$PROTO_PATH" ] || { echo "error: no such proto file: $PROTO_PATH" >&2; exit 1; }
+if [ ! -d "$PROTOS_DIR" ]; then
+  echo "error: no such proto directory: $PROTOS_DIR" >&2
+  exit 1
+fi
+
+PROTO_FILES=()
+while IFS= read -r proto_file; do
+  PROTO_FILES+=("$proto_file")
+done < <(find "$PROTOS_DIR" -maxdepth 1 -name '*.proto' -print | sort)
+
+if [ "${#PROTO_FILES[@]}" -eq 0 ]; then
+  echo "error: no .proto files found under $PROTOS_DIR" >&2
+  exit 1
+fi
 
 # Use the exact Grpc.Tools version this project itself references, so the hash reflects
 # the same protoc build that actually compiled it — not whatever else happens to be
@@ -68,14 +83,6 @@ WELL_KNOWN_INCLUDE="$GRPC_TOOLS_DIR/build/native/include"
 WORK_DIR=$(mktemp -d)
 trap 'rm -rf "$WORK_DIR"' EXIT
 
-DESCRIPTOR="$WORK_DIR/descriptor.bin"
-"$PROTOC" --proto_path="$PROTOS_DIR" --descriptor_set_out="$DESCRIPTOR" "$PROTO_PATH"
-
-echo "Hashing RPC signatures and message/enum fields from $PROTO_FILE ..." >&2
-
-# Materialized to a file, not read via `python3 - <<PY`: python3 reading its own program
-# from stdin ('-') would consume the heredoc as the *script*, leaving nothing in stdin for
-# the script's own sys.stdin.read() to see — the piped protoc output would be silently lost.
 CANONICALIZE="$WORK_DIR/canonicalize.py"
 cat > "$CANONICALIZE" <<'PY'
 import hashlib
@@ -147,6 +154,27 @@ canonical = "\n".join(facts)
 print(hashlib.sha256(canonical.encode("utf-8")).hexdigest())
 PY
 
-"$PROTOC" -I "$WELL_KNOWN_INCLUDE" --decode=google.protobuf.FileDescriptorSet google/protobuf/descriptor.proto \
-  < "$DESCRIPTOR" \
-  | python3 "$CANONICALIZE"
+COMBINED="$WORK_DIR/combined.txt"
+: > "$COMBINED"
+
+for PROTO_PATH in "${PROTO_FILES[@]}"; do
+  PROTO_FILE="$(basename "$PROTO_PATH")"
+  DESCRIPTOR="$WORK_DIR/${PROTO_FILE}.descriptor.bin"
+  "$PROTOC" --proto_path="$PROTOS_DIR" --descriptor_set_out="$DESCRIPTOR" "$PROTO_PATH"
+
+  echo "Hashing RPC signatures and message/enum fields from $PROTO_FILE ..." >&2
+
+  HASH=$("$PROTOC" -I "$WELL_KNOWN_INCLUDE" --decode=google.protobuf.FileDescriptorSet google/protobuf/descriptor.proto \
+    < "$DESCRIPTOR" \
+    | python3 "$CANONICALIZE")
+  printf '%s:%s\n' "$PROTO_FILE" "$HASH" >> "$COMBINED"
+done
+
+python3 - "$COMBINED" <<'PY'
+import hashlib
+import sys
+
+path = sys.argv[1]
+with open(path, "rb") as handle:
+    print(hashlib.sha256(handle.read()).hexdigest())
+PY

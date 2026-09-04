@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+option csharp_namespace = "Tiki.Grpc.Contracts.Integration";
+
+package tiki.grpc.contracts.integration;
+
+// Volume mesh API owned by the Integration service. Sibling providers live in their
+// own proto files in this package (veriff.proto, smartcomply.proto, kycaid.proto).
+// Callers compile against this package; they never talk to Volume directly.
+service VolumeService {
+  rpc GetPaymentStatus (GetPaymentStatusRequest) returns (PaymentStatusReply);
+  rpc InitiateRefund (InitiateRefundRequest) returns (RefundReply);
+}
+
+message GetPaymentStatusRequest {
+  string merchant_payment_id = 1;
+  // Ledger attribution — never forwarded to Volume.
+  string business_id = 2;
+  string tenant_id = 3;
+}
+
+message InitiateRefundRequest {
+  // Volume's payment id (not the merchantPaymentId).
+  string payment_id = 1;
+  // Decimal as an invariant-culture string (e.g. "25.00").
+  string amount = 2;
+  // Ledger attribution — never forwarded to Volume.
+  string business_id = 3;
+  string tenant_id = 4;
+}
+
+message PaymentStatusReply {
+  string payment_id = 1;
+  string merchant_payment_id = 2;
+  // AWAITING_AUTHORIZATION, AUTHORIZED, PENDING, COMPLETED, SETTLED, or FAILED.
+  string payment_status = 3;
+  string payment_amount = 4;
+  string institution_id = 5;
+  string shopper_id = 6;
+  string error_description = 7;
+  string tracing_id = 8;
+}
+
+message RefundReply {
+  string refund_payment_id = 1;
+  string refunded_payment_id = 2;
+  // ISO-8601 timestamp.
+  string created_at_utc = 3;
+  string status = 4;
+  VolumeRefundRequestDetails refund_request_details = 5;
+}
+
+message VolumeRefundRequestDetails {
+  string amount = 1;
+  string currency = 2;
+  string reference = 3;
+  VolumeRefundDestination destination = 4;
+}
+
+message VolumeRefundDestination {
+  string type = 1;
+  string name = 2;
+  string account_number = 3;
+  string sort_code = 4;
+  string iban = 5;
+}

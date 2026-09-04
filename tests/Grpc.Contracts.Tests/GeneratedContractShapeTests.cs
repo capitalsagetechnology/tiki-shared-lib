@@ -45,16 +45,37 @@ public class GeneratedContractShapeTests
             typeof(IntegrationNs.VeriffService.VeriffServiceBase));
 
     [Fact]
-    public void Integration_CreateSession_rpc_is_present_on_both_the_stub_and_the_base()
-    {
-        var clientHasIt = typeof(IntegrationNs.VeriffService.VeriffServiceClient)
-            .GetMethods().Any(m => m.Name.StartsWith("CreateSession", StringComparison.Ordinal));
-        var baseHasIt = typeof(IntegrationNs.VeriffService.VeriffServiceBase)
-            .GetMethods().Any(m => m.Name == "CreateSession");
+    public void Integration_Veriff_CreateSession_rpc_is_present_on_both_the_stub_and_the_base() =>
+        AssertRpcPresentOnBoth(
+            typeof(IntegrationNs.VeriffService.VeriffServiceClient),
+            typeof(IntegrationNs.VeriffService.VeriffServiceBase),
+            "CreateSession");
 
-        Assert.True(clientHasIt, "Client stub is missing CreateSession.");
-        Assert.True(baseHasIt, "Service base class is missing CreateSession.");
-    }
+    [Fact]
+    public void Integration_SmartComply_contract_generates_both_client_stub_and_service_base() =>
+        AssertGeneratesBoth(
+            typeof(IntegrationNs.SmartComplyService.SmartComplyServiceClient),
+            typeof(IntegrationNs.SmartComplyService.SmartComplyServiceBase));
+
+    [Fact]
+    public void Integration_SmartComply_SubmitKycCheck_rpc_is_present_on_both_the_stub_and_the_base() =>
+        AssertRpcPresentOnBoth(
+            typeof(IntegrationNs.SmartComplyService.SmartComplyServiceClient),
+            typeof(IntegrationNs.SmartComplyService.SmartComplyServiceBase),
+            "SubmitKycCheck");
+
+    [Fact]
+    public void Integration_Volume_contract_generates_both_client_stub_and_service_base() =>
+        AssertGeneratesBoth(
+            typeof(IntegrationNs.VolumeService.VolumeServiceClient),
+            typeof(IntegrationNs.VolumeService.VolumeServiceBase));
+
+    [Fact]
+    public void Integration_Volume_GetPaymentStatus_rpc_is_present_on_both_the_stub_and_the_base() =>
+        AssertRpcPresentOnBoth(
+            typeof(IntegrationNs.VolumeService.VolumeServiceClient),
+            typeof(IntegrationNs.VolumeService.VolumeServiceBase),
+            "GetPaymentStatus");
 
     [Fact]
     public void Compliance_GetVerificationStatus_rpc_is_present_on_both_the_stub_and_the_base()
@@ -85,5 +106,18 @@ public class GeneratedContractShapeTests
         // unqualified Grpc.Core.ClientBase would resolve to the wrong place.
         Assert.True(typeof(global::Grpc.Core.ClientBase).IsAssignableFrom(clientType), $"{clientType} should derive from Grpc.Core.ClientBase.");
         Assert.True(baseType.IsAbstract, $"{baseType} should be the abstract service base class.");
+    }
+
+    private static void AssertRpcPresentOnBoth(Type clientType, Type baseType, string rpcName)
+    {
+        var clientHasIt = clientType
+            .GetMethods()
+            .Any(m => m.Name.StartsWith(rpcName, StringComparison.Ordinal));
+        var baseHasIt = baseType
+            .GetMethods()
+            .Any(m => m.Name == rpcName);
+
+        Assert.True(clientHasIt, $"Client stub is missing {rpcName}.");
+        Assert.True(baseHasIt, $"Service base class is missing {rpcName}.");
     }
 }
