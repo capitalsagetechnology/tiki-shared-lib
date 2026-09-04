@@ -4,10 +4,7 @@ option csharp_namespace = "Tiki.Grpc.Contracts.Integration";
 
 package tiki.grpc.contracts.integration;
 
-// Flutterwave mesh API owned by the Integration service. Sibling providers live in their own
-// proto files in this package (veriff.proto, kycaid.proto, volume.proto, smartcomply.proto).
-// Callers compile against this package; they never talk to Flutterwave (or any other provider)
-// directly.
+// Flutterwave mesh API owned by the Integration service.
 service FlutterwaveService {
   rpc GetBanks (GetBanksRequest) returns (GetBanksReply);
   rpc GetBankBranches (GetBankBranchesRequest) returns (GetBankBranchesReply);
