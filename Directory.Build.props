@@ -21,4 +21,17 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
   </PropertyGroup>
 
+  <!--
+    grpc.tools does not ship a macosx_arm64 protoc/grpc_csharp_plugin build, so on
+    Apple Silicon Macs without Rosetta 2 installed the bundled macosx_x64 binaries
+    fail with "Bad CPU type in executable". Fall back to Homebrew's native arm64
+    binaries (brew install protobuf grpc) when present. Mirrors the same fix in
+    tiki-identity-api's Directory.Build.props, which doesn't apply here since this
+    is a sibling repo, not a nested one.
+  -->
+  <PropertyGroup Condition="'$(OS)' != 'Windows_NT' and Exists('/opt/homebrew/bin/protoc') and Exists('/opt/homebrew/bin/grpc_csharp_plugin')">
+    <PROTOBUF_PROTOC>/opt/homebrew/bin/protoc</PROTOBUF_PROTOC>
+    <GRPC_PROTOC_PLUGIN>/opt/homebrew/bin/grpc_csharp_plugin</GRPC_PROTOC_PLUGIN>
+  </PropertyGroup>
+
 </Project>
