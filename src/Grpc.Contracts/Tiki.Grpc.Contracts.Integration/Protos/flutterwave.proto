@@ -1,0 +1,222 @@
+syntax = "proto3";
+
+option csharp_namespace = "Tiki.Grpc.Contracts.Integration";
+
+package tiki.grpc.contracts.integration;
+
+// Flutterwave mesh API owned by the Integration service. Sibling providers live in their own
+// proto files in this package (veriff.proto, kycaid.proto, volume.proto, smartcomply.proto).
+// Callers compile against this package; they never talk to Flutterwave (or any other provider)
+// directly.
+service FlutterwaveService {
+  rpc GetBanks (GetBanksRequest) returns (GetBanksReply);
+  rpc GetBankBranches (GetBankBranchesRequest) returns (GetBankBranchesReply);
+  rpc ResolveAccount (ResolveAccountRequest) returns (ResolveAccountReply);
+  rpc InitiateTransfer (InitiateTransferRequest) returns (TransferReply);
+  rpc RetryTransfer (RetryTransferRequest) returns (TransferReply);
+  rpc GetTransferStatus (GetTransferStatusRequest) returns (TransferReply);
+  rpc VerifyTransactionById (VerifyTransactionByIdRequest) returns (TransactionVerifyReply);
+  rpc VerifyTransactionByReference (VerifyTransactionByReferenceRequest) returns (TransactionVerifyReply);
+  rpc RefundTransaction (RefundTransactionRequest) returns (RefundReply);
+  rpc GetRefund (GetRefundRequest) returns (RefundReply);
+  rpc ResendFailedWebhook (ResendFailedWebhookRequest) returns (ResendFailedWebhookReply);
+}
+
+message GetBanksRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string country_code = 3;
+}
+
+message BankSummary {
+  int32 id = 1;
+  string code = 2;
+  string name = 3;
+}
+
+message GetBanksReply {
+  repeated BankSummary banks = 1;
+}
+
+message GetBankBranchesRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  int32 bank_id = 3;
+}
+
+message BankBranchSummary {
+  int32 id = 1;
+  string branch_code = 2;
+  string branch_name = 3;
+  string swift_code = 4;
+  string bic = 5;
+  int32 bank_id = 6;
+}
+
+message GetBankBranchesReply {
+  repeated BankBranchSummary branches = 1;
+}
+
+message ResolveAccountRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string account_number = 3;
+  string account_bank = 4;
+  string country = 5;
+}
+
+message ResolveAccountReply {
+  bool is_valid = 1;
+  string account_number = 2;
+  string account_name = 3;
+  string error_message = 4;
+}
+
+message InitiateTransferRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  InitiateTransferPayout payout = 3;
+}
+
+message InitiateTransferPayout {
+  string amount = 1;
+  string currency = 2;
+  string account_bank = 3;
+  string account_number = 4;
+  string debit_sub_account = 5;
+  string narration = 6;
+  string reference = 7;
+  string debit_currency = 8;
+  string destination_branch_code = 9;
+  string beneficiary_name = 10;
+  string call_back_url = 11;
+  string meta_json = 12;
+}
+
+message RetryTransferRequest {
+  int32 transfer_id = 1;
+  string business_id = 2;
+  string tenant_id = 3;
+}
+
+message GetTransferStatusRequest {
+  int32 transfer_id = 1;
+  string business_id = 2;
+  string tenant_id = 3;
+}
+
+message TransferReply {
+  int32 transfer_id = 1;
+  string status = 2;
+  string fee = 3;
+  string reference = 4;
+  string complete_message = 5;
+  string account_number = 6;
+  string bank_code = 7;
+  string bank_name = 8;
+  string full_name = 9;
+  string created_at = 10;
+  string currency = 11;
+  string debit_currency = 12;
+  string amount = 13;
+  string narration = 14;
+  int32 requires_approval = 15;
+  int32 is_approved = 16;
+  string approver = 17;
+  map<string, string> meta = 18;
+}
+
+message VerifyTransactionByIdRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  int32 transaction_id = 3;
+}
+
+message VerifyTransactionByReferenceRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string tx_ref = 3;
+}
+
+message TransactionVerifyReply {
+  int32 transaction_id = 1;
+  string status = 2;
+  string amount = 3;
+  string currency = 4;
+  string app_fee = 5;
+  string tx_ref = 6;
+  string flw_ref = 7;
+  string device_fingerprint = 8;
+  string charged_amount = 9;
+  string merchant_fee = 10;
+  string processor_response = 11;
+  string auth_model = 12;
+  string ip = 13;
+  string narration = 14;
+  string payment_type = 15;
+  string created_at = 16;
+  int32 account_id = 17;
+  string amount_settled = 18;
+  TransactionCard card = 19;
+  TransactionCustomer customer = 20;
+}
+
+message TransactionCard {
+  string first_6digits = 1;
+  string last_4digits = 2;
+  string issuer = 3;
+  string country = 4;
+  string type = 5;
+  string token = 6;
+  string expiry = 7;
+}
+
+message TransactionCustomer {
+  int32 id = 1;
+  string name = 2;
+  string phone_number = 3;
+  string email = 4;
+  string created_at = 5;
+}
+
+message RefundTransactionRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  int32 transaction_id = 3;
+  int32 amount = 4;
+  string comments = 5;
+  string callback_url = 6;
+}
+
+message GetRefundRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  int32 refund_id = 3;
+}
+
+message RefundReply {
+  int32 refund_id = 1;
+  int32 transaction_id = 2;
+  string amount_refunded = 3;
+  string status = 4;
+  string destination = 5;
+  string comments = 6;
+  string created_at = 7;
+  string flw_ref = 8;
+  string settlement_id = 9;
+  int32 account_id = 10;
+  map<string, string> meta = 11;
+}
+
+message ResendFailedWebhookRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  int32 transaction_id = 3;
+  int32 wait = 4;
+}
+
+message ResendFailedWebhookReply {
+  string status = 1;
+  string message = 2;
+  optional string data_json = 3;
+}

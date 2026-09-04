@@ -1,0 +1,112 @@
+syntax = "proto3";
+
+option csharp_namespace = "Tiki.Grpc.Contracts.Integration";
+
+package tiki.grpc.contracts.integration;
+
+// Veriff mesh API owned by the Integration service. Sibling providers live in their own
+// proto files in this package (kycaid.proto, volume.proto, smartcomply.proto). Callers
+// compile against this package; they never talk to Veriff (or any other provider) directly.
+service VeriffService {
+  rpc CreateSession (CreateSessionRequest) returns (SessionReply);
+  rpc GetDecision (GetDecisionRequest) returns (DecisionReply);
+  rpc UpdateSessionStatus (UpdateSessionStatusRequest) returns (SessionReply);
+}
+
+message CreateSessionRequest {
+  // Ledger attribution — never forwarded to Veriff.
+  string business_id = 1;
+  string tenant_id = 2;
+  CreateSessionVerification verification = 3;
+}
+
+message CreateSessionVerification {
+  string callback = 1;
+  CreateSessionPerson person = 2;
+  CreateSessionDocument document = 3;
+  CreateSessionAddress address = 4;
+  CreateSessionProofOfAddress proof_of_address = 5;
+  CreateSessionServiceCoverage service_coverage = 6;
+  string vendor_data = 7;
+  string end_user_id = 8;
+  repeated CreateSessionConsent consents = 9;
+  string tag = 10;
+  string host_app_link = 11;
+}
+
+message CreateSessionPerson {
+  string first_name = 1;
+  string last_name = 2;
+  string id_number = 3;
+  string date_of_birth = 4;
+  string gender = 5;
+  string email = 6;
+  string phone_number = 7;
+}
+
+message CreateSessionDocument {
+  string number = 1;
+  string type = 2;
+  string country = 3;
+}
+
+message CreateSessionAddress {
+  string full_address = 1;
+}
+
+message CreateSessionProofOfAddress {
+  repeated ProofOfAddressAcceptableType acceptable_types = 1;
+}
+
+message ProofOfAddressAcceptableType {
+  string name = 1;
+}
+
+message CreateSessionServiceCoverage {
+  string country = 1;
+}
+
+message CreateSessionConsent {
+  string type = 1;
+  bool approved = 2;
+  string text = 3;
+  string timestamp = 4;
+}
+
+message SessionReply {
+  string status = 1;
+  SessionVerification verification = 2;
+}
+
+message SessionVerification {
+  string id = 1;
+  string url = 2;
+  string session_token = 3;
+  string host = 4;
+  string status = 5;
+  string end_user_id = 6;
+  string vendor_data = 7;
+}
+
+message GetDecisionRequest {
+  string session_id = 1;
+  string business_id = 2;
+  string tenant_id = 3;
+}
+
+message DecisionReply {
+  string status = 1;
+  string verification_id = 2;
+  string verification_status = 3;
+  int32 code = 4;
+  string reason = 5;
+  string vendor_data = 6;
+  string end_user_id = 7;
+}
+
+message UpdateSessionStatusRequest {
+  string session_id = 1;
+  string business_id = 2;
+  string tenant_id = 3;
+  string verification_status = 4;
+}
