@@ -78,6 +78,25 @@ public class GeneratedContractShapeTests
             "GetPaymentStatus");
 
     [Fact]
+    public void Integration_Flutterwave_contract_generates_both_client_stub_and_service_base() =>
+        AssertGeneratesBoth(
+            typeof(IntegrationNs.FlutterwaveService.FlutterwaveServiceClient),
+            typeof(IntegrationNs.FlutterwaveService.FlutterwaveServiceBase));
+
+    [Fact]
+    public void Integration_Flutterwave_RefundTransaction_rpc_is_present_on_both_the_stub_and_the_base() =>
+        AssertRpcPresentOnBoth(
+            typeof(IntegrationNs.FlutterwaveService.FlutterwaveServiceClient),
+            typeof(IntegrationNs.FlutterwaveService.FlutterwaveServiceBase),
+            "RefundTransaction");
+
+    [Fact]
+    public void Integration_Kycaid_contract_generates_both_client_stub_and_service_base() =>
+        AssertGeneratesBoth(
+            typeof(IntegrationNs.KycaidService.KycaidServiceClient),
+            typeof(IntegrationNs.KycaidService.KycaidServiceBase));
+
+    [Fact]
     public void Compliance_GetVerificationStatus_rpc_is_present_on_both_the_stub_and_the_base()
     {
         var clientHasIt = typeof(ComplianceNs.ComplianceService.ComplianceServiceClient)

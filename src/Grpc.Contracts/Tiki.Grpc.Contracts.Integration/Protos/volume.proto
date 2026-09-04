@@ -5,7 +5,8 @@ option csharp_namespace = "Tiki.Grpc.Contracts.Integration";
 package tiki.grpc.contracts.integration;
 
 // Volume mesh API owned by the Integration service. Sibling providers live in their
-// own proto files in this package (veriff.proto, smartcomply.proto, kycaid.proto).
+// own proto files in this package (veriff.proto, smartcomply.proto, kycaid.proto,
+// flutterwave.proto). Message names must be unique across that shared package.
 // Callers compile against this package; they never talk to Volume directly.
 service VolumeService {
   rpc GetPaymentStatus (GetPaymentStatusRequest) returns (PaymentStatusReply);
