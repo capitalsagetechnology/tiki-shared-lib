@@ -7,6 +7,16 @@ behavior change in a minor or patch release.
 
 ## [Unreleased]
 
+## [grpc-integration-v0.2.0] - 2026-09-03
+
+Additive publish of `Tiki.Grpc.Contracts.Integration`.
+
+### Added
+- `SmartComplyService` in `smartcomply.proto`: `SubmitKycCheck`, `SubmitMonitoring`,
+  `SubmitScreening`.
+- `VolumeService` in `volume.proto`: `GetPaymentStatus`, `InitiateRefund`.
+  One proto per provider so KYCAID can still join as a sibling later.
+
 
 ### Added
 - Initial project scaffold: `Core`, `Results`, `Validation`, `Telemetry`, `Caching`,
@@ -88,4 +98,5 @@ First publish of `Tiki.Grpc.Contracts.Integration`.
   `VeriffService` / `veriff.proto`.
 
 [Unreleased]: https://github.com/tiki/tiki-shared-lib/compare/main...HEAD
+[grpc-integration-v0.2.0]: https://github.com/tiki/tiki-shared-lib/releases/tag/grpc-integration-v0.2.0
 [grpc-integration-v0.1.0]: https://github.com/tiki/tiki-shared-lib/releases/tag/grpc-integration-v0.1.0
