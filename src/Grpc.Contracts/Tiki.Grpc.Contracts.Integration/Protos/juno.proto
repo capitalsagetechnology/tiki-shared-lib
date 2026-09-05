@@ -1,0 +1,111 @@
+syntax = "proto3";
+
+option csharp_namespace = "Tiki.Grpc.Contracts.Integration";
+
+package tiki.grpc.contracts.integration;
+
+// Juno (by Bitso) mesh API owned by the Integration service. Juno is used only for MXN pay-ins -
+// minting a persistent receiving CLABE and listing/confirming SPEI deposits against it.
+service JunoService {
+  rpc CreateClabe (CreateClabeRequest) returns (ClabeReply);
+  rpc GetClabe (GetClabeRequest) returns (JunoClabeDetailsReply);
+  rpc GetDeposits (GetDepositsRequest) returns (GetDepositsReply);
+  rpc SimulateSpeiDeposit (JunoSimulateSpeiDepositRequest) returns (JunoSpeiDepositSimulationReply);
+}
+
+message CreateClabeRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+}
+
+message ClabeReply {
+  string clabe = 1;
+  string type = 2;
+}
+
+message GetClabeRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string clabe = 3;
+}
+
+message JunoDepositMaximumAmounts {
+  string operation = 1;
+  string daily = 2;
+  string weekly = 3;
+  string monthly = 4;
+}
+
+message JunoClabeDetailsReply {
+  string clabe = 1;
+  string type = 2;
+  string status = 3;
+  string deposit_minimum_amount = 4;
+  JunoDepositMaximumAmounts deposit_maximum_amounts = 5;
+  string created_at = 6;
+  string updated_at = 7;
+}
+
+message GetDepositsRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string clabe_type = 3;
+  string deposit_status = 4;
+  string start_date = 5;
+  string end_date = 6;
+  string receiver_clabe = 7;
+  string sender_clabe = 8;
+  optional bool only_refunds = 9;
+  string timezone = 10;
+  string tracking_key = 11;
+  optional int32 page = 12;
+  optional int32 page_size = 13;
+}
+
+message Deposit {
+  string fid = 1;
+  string deposit_id = 2;
+  string sender_clabe = 3;
+  string receiver_clabe = 4;
+  string status = 5;
+  string amount = 6;
+  string currency = 7;
+  string sender_name = 8;
+  string sender_bank = 9;
+  string clave = 10;
+  string clave_rastreo = 11;
+  string numeric_reference = 12;
+  string concepto = 13;
+  string cep_link = 14;
+  string created_at = 15;
+  string updated_at = 16;
+}
+
+message GetDepositsReply {
+  repeated Deposit deposits = 1;
+}
+
+// Staging-only mock deposit against a Juno-minted CLABE - also triggers MXNB issuance on the
+// testing account. Named with a Juno prefix since Bitso's legacy SPEI rail (bitso.proto) has an
+// identically-shaped-but-not-identical simulate-deposit request/reply pair in the same package.
+message JunoSimulateSpeiDepositRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string amount = 3;
+  string receiver_clabe = 4;
+  string receiver_name = 5;
+  string sender_name = 6;
+}
+
+message JunoSpeiDepositSimulationReply {
+  string amount = 1;
+  string tracking_code = 2;
+  string tracking_key = 3;
+  string sender_clabe = 4;
+  string sender_name = 5;
+  string sender_curp = 6;
+  string receiver_clabe = 7;
+  string receiver_name = 8;
+  string receiver_curp = 9;
+  string created_at = 10;
+}

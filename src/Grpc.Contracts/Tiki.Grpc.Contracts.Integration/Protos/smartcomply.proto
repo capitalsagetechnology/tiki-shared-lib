@@ -1,0 +1,159 @@
+syntax = "proto3";
+
+option csharp_namespace = "Tiki.Grpc.Contracts.Integration";
+
+package tiki.grpc.contracts.integration;
+
+// SmartComply mesh API owned by the Integration service. Sibling providers live in their
+// own proto files in this package (veriff.proto, volume.proto, kycaid.proto). Callers
+// compile against this package; they never talk to SmartComply directly.
+service SmartComplyService {
+  rpc SubmitKycCheck (SubmitKycCheckRequest) returns (KycCheckReply);
+  rpc SubmitMonitoring (SubmitMonitoringRequest) returns (MonitoringReply);
+  rpc SubmitScreening (SubmitScreeningRequest) returns (ScreeningReply);
+}
+
+message SubmitKycCheckRequest {
+  // Ledger attribution — never forwarded to SmartComply.
+  string business_id = 1;
+  string tenant_id = 2;
+  string entity_name = 3;
+  // person, company, business, or organization.
+  string entity_type = 4;
+  optional int32 branch = 5;
+  string reference = 6;
+  bool force_new = 7;
+}
+
+message SubmitMonitoringRequest {
+  // Ledger attribution — never forwarded to SmartComply.
+  string business_id = 1;
+  string tenant_id = 2;
+  string reference = 3;
+  string customer_id = 4;
+  // Decimal as an invariant-culture string (e.g. "1500.00").
+  string amount = 5;
+  string currency = 6;
+  string transaction_type = 7;
+  string account_type = 8;
+  string sender_name = 9;
+  string sender_account_number = 10;
+  string sender_bank_code = 11;
+  string recipient_name = 12;
+  string recipient_account_number = 13;
+  string recipient_bank_code = 14;
+  string customer_email = 15;
+  string bvn = 16;
+  string transaction_status = 17;
+  string ip_address = 18;
+  string location = 19;
+  string narration = 20;
+  bool run_kyc = 21;
+  optional bool block_screening = 22;
+}
+
+message SubmitScreeningRequest {
+  // Ledger attribution — never forwarded to SmartComply.
+  string business_id = 1;
+  string tenant_id = 2;
+  string reference = 3;
+  string customer_id = 4;
+  // Decimal as an invariant-culture string (e.g. "1500.00").
+  string amount = 5;
+  string currency = 6;
+  string transaction_type = 7;
+  string account_type = 8;
+  // ISO-8601 timestamp.
+  string transaction_date = 9;
+  string sender_name = 10;
+  string sender_account_number = 11;
+  string sender_bank_code = 12;
+  SmartComplyAddress sender_address = 13;
+  SmartComplyIdentification sender_identification = 14;
+  string recipient_name = 15;
+  string recipient_account_number = 16;
+  string recipient_bank_code = 17;
+  SmartComplyAddress recipient_address = 18;
+  SmartComplyIdentification recipient_identification = 19;
+  string narration = 20;
+}
+
+message SmartComplyAddress {
+  string street = 1;
+  string city = 2;
+  string state = 3;
+  string postal_code = 4;
+  string country = 5;
+}
+
+message SmartComplyIdentification {
+  string type = 1;
+  string number = 2;
+  string country = 3;
+}
+
+message KycCheckReply {
+  string id = 1;
+  string entity_name = 2;
+  string client_type = 3;
+  string client_reference = 4;
+  string sources = 5;
+  optional int32 adhere_id = 6;
+  string adhere_status = 7;
+  string status = 8;
+  // ISO-8601 timestamps.
+  string submitted_at = 9;
+  string completed_at = 10;
+  string created_at = 11;
+  // Untyped OpenAPI extras serialized as JSON.
+  string adhere_response_json = 12;
+  optional int32 check_attempts = 13;
+  string last_checked_at = 14;
+  string error_message = 15;
+  string extension_json = 16;
+}
+
+message MonitoringReply {
+  string id = 1;
+  string transaction_id = 2;
+  string client_type = 3;
+  string client_reference = 4;
+  string amount = 5;
+  string currency = 6;
+  string transaction_type = 7;
+  string adhere_status = 8;
+  string status = 9;
+  string adhere_response_json = 10;
+  string monitoring_status = 11;
+  string activity_code = 12;
+  string fraud_percent = 13;
+  string risk_tags_json = 14;
+  string comments_json = 15;
+  string error_message = 16;
+  string origin_account_json = 17;
+  string destination_account_json = 18;
+  string customer_details_json = 19;
+  string submitted_at = 20;
+  string created_at = 21;
+  optional bool block_screening = 22;
+  string extension_json = 23;
+}
+
+message ScreeningReply {
+  string id = 1;
+  string transaction_id = 2;
+  string client_type = 3;
+  string client_reference = 4;
+  string amount = 5;
+  string currency = 6;
+  string transaction_type = 7;
+  string adhere_status = 8;
+  string status = 9;
+  string adhere_response_json = 10;
+  string screening_timestamp = 11;
+  string sender_json = 12;
+  string receiver_json = 13;
+  string submitted_at = 14;
+  string created_at = 15;
+  string extension_json = 16;
+}

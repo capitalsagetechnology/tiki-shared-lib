@@ -11,6 +11,14 @@ service VeriffService {
   rpc CreateSession (CreateSessionRequest) returns (SessionReply);
   rpc GetDecision (GetDecisionRequest) returns (DecisionReply);
   rpc UpdateSessionStatus (UpdateSessionStatusRequest) returns (SessionReply);
+  rpc UploadMedia (UploadMediaRequest) returns (MediaReply);
+}
+
+enum VeriffVerificationType {
+  VERIFF_VERIFICATION_TYPE_UNSPECIFIED = 0;
+  VERIFF_VERIFICATION_TYPE_IDENTITY = 1;
+  VERIFF_VERIFICATION_TYPE_ADDRESS = 2;
+  VERIFF_VERIFICATION_TYPE_AML = 3;
 }
 
 message CreateSessionRequest {
@@ -18,6 +26,7 @@ message CreateSessionRequest {
   string business_id = 1;
   string tenant_id = 2;
   CreateSessionVerification verification = 3;
+  VeriffVerificationType type = 4;
 }
 
 message CreateSessionVerification {
@@ -92,6 +101,7 @@ message GetDecisionRequest {
   string session_id = 1;
   string business_id = 2;
   string tenant_id = 3;
+  VeriffVerificationType type = 4;
 }
 
 message DecisionReply {
@@ -109,4 +119,49 @@ message UpdateSessionStatusRequest {
   string business_id = 2;
   string tenant_id = 3;
   string verification_status = 4;
+  VeriffVerificationType type = 5;
+}
+
+message UploadMediaRequest {
+  string session_id = 1;
+  // Ledger attribution — never forwarded to Veriff.
+  string business_id = 2;
+  string tenant_id = 3;
+  oneof payload {
+    UploadMediaImage image = 4;
+    UploadMediaNfcDocuments nfc_documents = 5;
+  }
+  VeriffVerificationType type = 6;
+}
+
+message UploadMediaImage {
+  // document-front, document-back, face, address-front (and Veriff -pre variants).
+  string context = 1;
+  // Data-URI base64, e.g. data:image/jpeg;base64,...
+  string content = 2;
+  string timestamp = 3;
+}
+
+message UploadMediaNfcDocuments {
+  string com = 1;
+  string sod = 2;
+  string dg1 = 3;
+  string dg2 = 4;
+}
+
+message MediaReply {
+  string status = 1;
+  UploadedMedia image = 2;
+  UploadedMedia nfc_document = 3;
+}
+
+message UploadedMedia {
+  string id = 1;
+  string name = 2;
+  string context = 3;
+  string timestamp = 4;
+  int64 size = 5;
+  string mimetype = 6;
+  string url = 7;
+  string session_id = 8;
 }
