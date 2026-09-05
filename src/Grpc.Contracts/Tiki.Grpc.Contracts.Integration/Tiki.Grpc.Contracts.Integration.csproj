@@ -3,7 +3,7 @@
   <PropertyGroup>
     <IsPackable>true</IsPackable>
     <PackageId>Tiki.Grpc.Contracts.Integration</PackageId>
-    <Version>0.2.2</Version>
+    <Version>0.2.3</Version>
     <Description>gRPC contract for Integration Service — provider-split protos (Veriff, Volume, SmartComply, and KYCAID). .proto-derived client stub and service base class.</Description>
     <PackageTags>tiki;grpc;contracts;integration</PackageTags>
     <RootNamespace>Tiki.Grpc.Contracts.Integration</RootNamespace>
