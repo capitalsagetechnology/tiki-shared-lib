@@ -156,6 +156,7 @@ message TransactionVerifyReply {
   string amount_settled = 18;
   TransactionCard card = 19;
   TransactionCustomer customer = 20;
+  map<string, string> meta = 21;
 }
 
 message TransactionCard {
@@ -203,6 +204,7 @@ message FlutterwaveRefundReply {
   string settlement_id = 9;
   int32 account_id = 10;
   map<string, string> meta = 11;
+  int32 wallet_id = 12;
 }
 
 message ResendFailedWebhookRequest {
