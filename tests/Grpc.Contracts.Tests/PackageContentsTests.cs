@@ -53,10 +53,26 @@ public sealed class PackageContentsTests : IAsyncLifetime
     public void Package_ships_the_proto_as_plain_content_not_contentFiles(string service)
     {
         using var archive = ZipFile.OpenRead(_nupkgPathByService[service]);
-        var protoFileName = PackedProtoFileName(service);
 
-        Assert.Contains(archive.Entries, e => e.FullName == $"protos/{protoFileName}.proto");
+        foreach (var protoFileName in PackedProtoFileNames(service))
+        {
+            Assert.Contains(archive.Entries, e => e.FullName == $"protos/{protoFileName}.proto");
+        }
+
         Assert.DoesNotContain(archive.Entries, e => e.FullName.StartsWith("contentFiles/", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Integration_package_ships_every_provider_proto()
+    {
+        using var archive = ZipFile.OpenRead(_nupkgPathByService["Integration"]);
+        var protoEntries = archive.Entries
+            .Where(e => e.FullName.StartsWith("protos/", StringComparison.Ordinal) && e.FullName.EndsWith(".proto", StringComparison.Ordinal))
+            .Select(e => e.FullName["protos/".Length..])
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Equal(["bitso.proto", "flutterwave.proto", "juno.proto", "kycaid.proto", "smartcomply.proto", "veriff.proto", "volume.proto"], protoEntries);
     }
 
     [Theory]
@@ -103,12 +119,12 @@ public sealed class PackageContentsTests : IAsyncLifetime
         Assert.Equal($"Tiki.Grpc.Contracts.{service}", id);
     }
 
-    private static string PackedProtoFileName(string service) => service switch
+    private static IReadOnlyList<string> PackedProtoFileNames(string service) => service switch
     {
         // Integration is one owning package with one proto per provider, not one
         // catch-all integration.proto.
-        "Integration" => "veriff",
-        _ => service.ToLowerInvariant(),
+        "Integration" => ["veriff", "volume", "smartcomply", "flutterwave", "kycaid", "bitso", "juno"],
+        _ => [service.ToLowerInvariant()],
     };
 
     private static async Task<int> RunDotnetAsync(IEnumerable<string> arguments)
