@@ -17,10 +17,11 @@ name: Publish Tiki.Shared
 on:
   push:
     branches: [main, dev]
-    paths:
-      - "src/Tiki.Shared/**"
-      - "Directory.Build.props"
-      - ".github/workflows/publish-shared.yml"
+    # No `paths` filter, deliberately. A paths filter applies to tag pushes as well as branch
+    # pushes, so cutting a release tag on a commit that happened not to touch these files would
+    # silently publish nothing — and the failure looks exactly like a green run. Publishing is
+    # idempotent (--skip-duplicate), and a dev push only ever produces a prerelease, so the
+    # cost of a redundant run is far lower than the cost of a release that quietly did not happen.
     tags:
       - "shared-v*.*.*"
   workflow_dispatch:

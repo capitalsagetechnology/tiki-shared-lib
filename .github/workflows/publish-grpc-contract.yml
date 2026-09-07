@@ -1,11 +1,28 @@
-name: Publish gRPC Contract
+name: Publish gRPC Contracts
 
-# One tag namespace per named service (grpc-<service>-v*.*.*), entirely independent of
-# Tiki.Shared's own shared-v*.*.* release cadence even though both live in this repo.
+# Same cadence as Tiki.Shared, for the same reason: a contract that only publishes on a tag
+# gets forgotten, and a service pinned to a version nobody published cannot build at all.
+# That is exactly what happened here — tiki-compliance-api pinned four contract packages, of
+# which three had never been published and one did not exist at the pinned version.
+#
+#   push to dev            ->  <Version>-dev.<run>   prerelease
+#   push to main           ->  <Version>             stable
+#   grpc-<service>-v1.2.3  ->  1.2.3                 explicit release, verified against the csproj
+#
+# Every contract package is packed on each run. --skip-duplicate makes an unchanged version a
+# no-op, so there is no need to work out which protos changed — and no way to forget one.
+
 on:
   push:
+    branches: [main, dev]
+    # No `paths` filter, deliberately. A paths filter applies to tag pushes as well as branch
+    # pushes, so cutting a release tag on a commit that happened not to touch these files would
+    # silently publish nothing — and the failure looks exactly like a green run. Publishing is
+    # idempotent (--skip-duplicate), and a dev push only ever produces a prerelease, so the
+    # cost of a redundant run is far lower than the cost of a release that quietly did not happen.
     tags:
       - "grpc-*-v*.*.*"
+  workflow_dispatch:
 
 env:
   DOTNET_NOLOGO: true
@@ -17,63 +34,11 @@ jobs:
     permissions:
       contents: read
       packages: write
+
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # full history — required for the ancestry check below
-
-      - name: Refuse to run unless the tag is reachable from main
-        run: |
-          git fetch origin main --quiet
-          if ! git merge-base --is-ancestor "${{ github.sha }}" origin/main; then
-            echo "::error::Tag ${{ github.ref_name }} (commit ${{ github.sha }}) is not reachable from main. Refusing to publish."
-            exit 1
-          fi
-          echo "Verified: ${{ github.ref_name }} is reachable from main."
-
-      - name: Parse the tag into a service name and version
-        id: parse
-        run: |
-          TAG="${GITHUB_REF_NAME}"
-          if [[ ! "$TAG" =~ ^grpc-([a-z]+)-v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
-            echo "::error::Tag '$TAG' does not match the expected grpc-<service>-v<version> shape."
-            exit 1
-          fi
-
-          SERVICE_LOWER="${BASH_REMATCH[1]}"
-          TAG_VERSION="${BASH_REMATCH[2]}"
-
-          case "$SERVICE_LOWER" in
-            identity)    SERVICE="Identity" ;;
-            wallet)      SERVICE="Wallet" ;;
-            transaction) SERVICE="Transaction" ;;
-            compliance)  SERVICE="Compliance" ;;
-            integration) SERVICE="Integration" ;;
-            *)
-              echo "::error::Unknown service '$SERVICE_LOWER' in tag '$TAG'. Expected one of: identity, wallet, transaction, compliance, integration."
-              exit 1
-              ;;
-          esac
-
-          echo "service=$SERVICE" >> "$GITHUB_OUTPUT"
-          echo "tag_version=$TAG_VERSION" >> "$GITHUB_OUTPUT"
-
-      - name: Refuse to run unless the tag version matches this project's <Version>
-        run: |
-          CSPROJ="src/Grpc.Contracts/Tiki.Grpc.Contracts.${{ steps.parse.outputs.service }}/Tiki.Grpc.Contracts.${{ steps.parse.outputs.service }}.csproj"
-          PROJECT_VERSION=$(grep -oP '(?<=<Version>)[^<]+' "$CSPROJ" | head -n1)
-
-          if [ -z "$PROJECT_VERSION" ]; then
-            echo "::error::$CSPROJ has no <Version> element to compare against."
-            exit 1
-          fi
-
-          if [ "${{ steps.parse.outputs.tag_version }}" != "$PROJECT_VERSION" ]; then
-            echo "::error::Tag version (${{ steps.parse.outputs.tag_version }}) does not match <Version> in $CSPROJ ($PROJECT_VERSION)."
-            exit 1
-          fi
-
-          echo "Verified: tag version matches Tiki.Grpc.Contracts.${{ steps.parse.outputs.service }}."
+          fetch-depth: 0
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -86,15 +51,62 @@ jobs:
       - name: Build
         run: dotnet build Tiki-shared.sln --no-restore --configuration Release
 
-      - name: Test (package-contents checks for every contract)
-        run: dotnet test tests/Grpc.Contracts.Tests/Tiki.Grpc.Contracts.Tests.csproj --no-build --configuration Release
+      # The contract tests check the generated C# shape against the protos, so a contract that
+      # would not compile for a consumer never reaches the feed.
+      - name: Test
+        run: dotnet test Tiki-shared.sln --no-build --configuration Release
 
-      - name: Pack this contract only
-        run: ./tools/pack-grpc-contract.sh ${{ steps.parse.outputs.service }}
+      - name: Pack every contract package
+        run: |
+          set -euo pipefail
+          mkdir -p ./artifacts
+
+          for proj in src/Grpc.Contracts/*/*.csproj; do
+            name=$(basename "$proj" .csproj)
+            version=$(grep -oP '(?<=<Version>)[^<]+' "$proj" | head -n1)
+
+            if [ -z "$version" ]; then
+              echo "::error::$proj has no <Version> element."
+              exit 1
+            fi
+
+            if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+              # grpc-identity-v0.3.0 -> the Identity package only, at exactly 0.3.0.
+              tag_service="${GITHUB_REF_NAME#grpc-}"
+              tag_service="${tag_service%%-v*}"
+              tag_version="${GITHUB_REF_NAME##*-v}"
+
+              if [[ "${name,,}" != *"${tag_service,,}"* ]]; then
+                continue
+              fi
+              if [ "$tag_version" != "$version" ]; then
+                echo "::error::Tag version ($tag_version) does not match <Version> in $proj ($version)."
+                exit 1
+              fi
+              publish_version="$version"
+
+            elif [ "${GITHUB_REF_NAME}" = "main" ]; then
+              publish_version="$version"
+            else
+              publish_version="${version}-dev.${GITHUB_RUN_NUMBER}"
+            fi
+
+            echo "Packing $name $publish_version"
+            dotnet pack "$proj" --no-build --configuration Release \
+              -p:PackageVersion="$publish_version" --output ./artifacts
+          done
 
       - name: Push to GitHub Packages
-        run: >
-          dotnet nuget push "artifacts/grpc-contracts/Tiki.Grpc.Contracts.${{ steps.parse.outputs.service }}.*.nupkg"
-          --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
-          --api-key ${{ secrets.GITHUB_TOKEN }}
-          --skip-duplicate
+        run: |
+          dotnet nuget push "./artifacts/*.nupkg" \
+            --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" \
+            --api-key ${{ secrets.GITHUB_TOKEN }} \
+            --skip-duplicate
+
+      - name: Summary
+        run: |
+          {
+            echo "### gRPC contracts published"
+            echo
+            ls -1 ./artifacts/*.nupkg | sed 's|.*/|- `|;s|\.nupkg$|`|'
+          } >> "$GITHUB_STEP_SUMMARY"
