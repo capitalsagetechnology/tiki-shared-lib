@@ -5,6 +5,48 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
+## [grpc-compliance-v0.2.0] — 2026-09-07
+
+`Tiki.Grpc.Contracts.Compliance` only ever declared `GetVerificationStatus`, but
+`tiki-compliance-api` had been written against a much larger surface — so the service did not
+compile against the contract it is the owner of. Every message and enum below already existed in
+Compliance's own domain and application layers; this publishes the shape they were always
+implementing.
+
+Additive: `GetVerificationStatus`, `GetVerificationStatusRequest`/`Response` and
+`VerificationState` are unchanged, with their field numbers intact.
+
+### Added — `StartKycVerification`
+
+Opens a verification round for a subject and starts the requested tracks, creating the subject's
+profile on first sight. Takes `KycSubject` — provider-neutral subject details, every field
+optional but the names, because what a provider requires differs by provider, country and
+verification type. Returns the round, the resolved provider and the sessions opened.
+
+### Added — `GetCustomerKycProfile`
+
+A subject's whole KYC standing: the three current tracks, `verified_until`, and every round ever
+run. The request is a **oneof** over `profile_id` and `subject_id` rather than two optional
+fields — a request carrying both would otherwise need a precedence rule, and a precedence rule is
+a thing callers get wrong silently.
+
+### Added — the shared KYC vocabulary
+
+`KycVerificationType`, `KycVerificationStatus`, `KycVerificationReason`, `KycProvider`,
+`KycVerificationRound` and `KycVerificationSession`.
+
+Two decisions worth recording. `KYC_VERIFICATION_STATUS_NOT_STARTED` and `..._UNSPECIFIED` are
+deliberately different values: the first means Compliance knows the track has not begun, the
+second that the field was never set, and collapsing them would make a serialisation bug look like
+a real state. And `KycProvider` is **reported, never requested** — the provider is resolved from
+the tenant's configuration for the subject's country, so a caller cannot pick one, and a round
+already run keeps naming the provider that ran it after that configuration changes.
+
+`GeneratedContractShapeTests` now pins the generated C# member names, not just the proto values.
+protoc strips the enum-name prefix and PascalCases the remainder, so `KYC_PROVIDER_SMARTCOMPLY`
+becomes `Smartcomply` while `KYC_PROVIDER_SMART_COMPLY` would become `SmartComply` — a rename that
+breaks every consumer's switch arm, produced by a proto edit that looks like tidying.
+
 ## [0.3.0] — 2026-09-07
 
 Team management and multi-tenant access. **Breaking** — a user can now hold different roles in

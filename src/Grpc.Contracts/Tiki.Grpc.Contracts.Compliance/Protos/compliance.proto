@@ -6,9 +6,164 @@ package tiki.grpc.contracts.compliance;
 
 // Owning service: Compliance. This package carries both the client stub every caller
 // consumes and the service base class Compliance's own implementation derives from.
+//
+// Nothing here names a provider. Veriff, KYCAID and SmartComply are Integrations'
+// vocabulary; a caller asks Compliance to verify a subject and Compliance decides which
+// provider that means for the tenant and country in question. KycProvider below reports
+// which one was used — it is a fact about a completed round, not a caller's choice.
 service ComplianceService {
+  // Opens a verification round for a subject and starts the requested tracks. Creates the
+  // subject's profile if this is the first time they have been seen.
+  rpc StartKycVerification (StartKycVerificationRequest) returns (StartKycVerificationResponse);
+
+  // A subject's whole KYC standing: the three current tracks, when the standing lapses,
+  // and every round ever run against them.
+  rpc GetCustomerKycProfile (GetCustomerKycProfileRequest) returns (CustomerKycProfileResponse);
+
+  // The narrow question — "is this subject verified?" — for a caller that needs an answer
+  // rather than a profile.
   rpc GetVerificationStatus (GetVerificationStatusRequest) returns (GetVerificationStatusResponse);
 }
+
+// ---------------------------------------------------------------------------------------
+// StartKycVerification
+// ---------------------------------------------------------------------------------------
+
+message StartKycVerificationRequest {
+  // The caller's own id for the subject. Compliance does not mint it and does not resolve
+  // it — it is the key the caller will use to ask about this subject again.
+  string subject_id = 1;
+
+  // ISO 3166-1 alpha-2. Selects the tenant's configured provider for that market, which is
+  // why it is required even when the subject already has a profile.
+  string country_code = 2;
+
+  // Never defaulted to all three: each type opens a billable provider session.
+  repeated KycVerificationType verification_types = 3;
+
+  KycSubject subject = 4;
+
+  // Unset means initial onboarding — the overwhelmingly common first call.
+  KycVerificationReason reason = 5;
+
+  string callback_url = 6;
+}
+
+message StartKycVerificationResponse {
+  string profile_id = 1;
+  string round_id = 2;
+
+  // Which provider actually ran this round, resolved from the tenant and country.
+  KycProvider provider = 3;
+
+  repeated KycVerificationSession sessions = 4;
+}
+
+// The subject details a provider needs to open a session. Provider-neutral by design.
+//
+// Every field is optional except the names, because what a provider requires differs by
+// provider, country and verification type — a field that is mandatory for a GB address
+// check is meaningless for a Canadian identity check.
+message KycSubject {
+  string first_name = 1;
+  string last_name = 2;
+
+  // ISO 8601 date, e.g. 1990-04-17. A string rather than a Timestamp: this is a calendar
+  // date on a document, with no time and no zone, and Timestamp would invent both.
+  string date_of_birth = 3;
+
+  string email = 4;
+  string phone_number = 5;
+  string id_number = 6;
+
+  // The fallback when the structured fields below are not available. Veriff matches a
+  // STRUCTURED address against a national registry (the GB electoral register, for one),
+  // and that check degrades badly when it has to parse one string — so send the parts when
+  // you have them.
+  string full_address = 7;
+
+  string street = 8;
+  string city = 9;
+  string postal_code = 10;
+  string state = 11;
+
+  string document_number = 12;
+
+  // What the subject says the document is, e.g. "PASSPORT". Their claim, not a finding.
+  string document_type = 13;
+
+  string document_country = 14;
+}
+
+// ---------------------------------------------------------------------------------------
+// GetCustomerKycProfile
+// ---------------------------------------------------------------------------------------
+
+message GetCustomerKycProfileRequest {
+  // One or the other, never both and never neither. A oneof rather than two optional
+  // fields so "which did you mean?" cannot arise: a request carrying both would otherwise
+  // need a precedence rule, and a precedence rule is a thing callers get wrong silently.
+  oneof identifier {
+    // Compliance's own profile id, as a UUID.
+    string profile_id = 1;
+
+    // The caller's subject id, as passed to StartKycVerification.
+    string subject_id = 2;
+  }
+}
+
+message CustomerKycProfileResponse {
+  string profile_id = 1;
+  string subject_id = 2;
+  string country_code = 3;
+
+  // The three tracks are separate fields rather than a map, because they are a fixed,
+  // known set that callers branch on individually — a map would make every read a lookup
+  // that can miss.
+  KycVerificationStatus identity_verification = 4;
+  KycVerificationStatus address_verification = 5;
+  KycVerificationStatus sanction_screening_verification = 6;
+
+  // ISO 8601, empty when the subject has never reached a verified standing. When this is
+  // in the past the subject is no longer verified, which is why is_verified is computed by
+  // Compliance rather than left to each caller to derive from this.
+  string verified_until = 7;
+
+  bool is_verified = 8;
+
+  // Newest first.
+  repeated KycVerificationRound rounds = 9;
+}
+
+// One verification round: everything started by a single StartKycVerification call.
+message KycVerificationRound {
+  string round_id = 1;
+  KycProvider provider = 2;
+  KycVerificationReason reason = 3;
+
+  // ISO 8601. settled_at is empty while the round is still open.
+  string opened_at = 4;
+  string settled_at = 5;
+
+  repeated KycVerificationSession sessions = 6;
+}
+
+// One provider session, as a caller sees it.
+message KycVerificationSession {
+  KycVerificationType type = 1;
+  KycVerificationStatus status = 2;
+
+  // Compliance's own session id, never the provider's. Leaking a provider session id would
+  // let anyone holding it talk to that provider about this verification directly.
+  string session_id = 3;
+
+  // The hosted flow to send the subject to, when the provider gives one. Empty otherwise.
+  string url = 4;
+}
+
+// ---------------------------------------------------------------------------------------
+// GetVerificationStatus — the narrow question
+// ---------------------------------------------------------------------------------------
 
 message GetVerificationStatusRequest {
   string subject_id = 1;
@@ -25,4 +180,56 @@ enum VerificationState {
   VERIFICATION_STATE_VERIFIED = 2;
   VERIFICATION_STATE_REJECTED = 3;
   VERIFICATION_STATE_EXPIRED = 4;
+}
+
+// ---------------------------------------------------------------------------------------
+// Vocabulary
+// ---------------------------------------------------------------------------------------
+
+// What is being verified. Each value is a separate, separately-billed provider session.
+enum KycVerificationType {
+  KYC_VERIFICATION_TYPE_UNSPECIFIED = 0;
+  KYC_VERIFICATION_TYPE_IDENTITY = 1;
+  KYC_VERIFICATION_TYPE_ADDRESS = 2;
+  KYC_VERIFICATION_TYPE_SANCTION_SCREENING = 3;
+}
+
+// Where one track stands. NOT_STARTED and UNSPECIFIED are different answers: the first
+// means Compliance knows this track has not begun, the second that the field was never set
+// — collapsing them would make a serialisation bug look like a real state.
+enum KycVerificationStatus {
+  KYC_VERIFICATION_STATUS_UNSPECIFIED = 0;
+  KYC_VERIFICATION_STATUS_NOT_STARTED = 1;
+  KYC_VERIFICATION_STATUS_IN_PROGRESS = 2;
+  KYC_VERIFICATION_STATUS_APPROVED = 3;
+  KYC_VERIFICATION_STATUS_DECLINED = 4;
+
+  // The provider wants another attempt at the same document — distinct from DECLINED,
+  // which is a verdict. A caller that treats these the same turns a fixable photo into a
+  // rejected customer.
+  KYC_VERIFICATION_STATUS_RESUBMISSION_REQUESTED = 5;
+
+  KYC_VERIFICATION_STATUS_EXPIRED = 6;
+  KYC_VERIFICATION_STATUS_ABANDONED = 7;
+}
+
+// Why a round was opened. Carried on the round because "we re-checked them because the
+// document expired" and "we re-checked them because something looked wrong" are different
+// facts that an audit needs to be able to tell apart afterwards.
+enum KycVerificationReason {
+  KYC_VERIFICATION_REASON_UNSPECIFIED = 0;
+  KYC_VERIFICATION_REASON_INITIAL_ONBOARDING = 1;
+  KYC_VERIFICATION_REASON_PERIODIC_REVERIFICATION = 2;
+  KYC_VERIFICATION_REASON_TRIGGERED_REVIEW = 3;
+  KYC_VERIFICATION_REASON_DOCUMENT_EXPIRED = 4;
+}
+
+// Which provider ran a round. Reported, never requested: the provider is resolved from the
+// tenant's configuration for the subject's country, so a caller cannot pick one — and a
+// round already run keeps naming the provider that ran it after that configuration changes.
+enum KycProvider {
+  KYC_PROVIDER_UNSPECIFIED = 0;
+  KYC_PROVIDER_VERIFF = 1;
+  KYC_PROVIDER_KYCAID = 2;
+  KYC_PROVIDER_SMARTCOMPLY = 3;
 }
