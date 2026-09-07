@@ -155,9 +155,22 @@ public static class TikiJwtExtensions
 
         context.HttpContext.Items[HttpContextSessionAccessor.ItemsKey] = session;
 
-        // Ambient context comes from the *session*, not the token: the session is current,
-        // and a long-lived token's copy of the tenant may be stale.
-        ServiceContext.TenantId = session.TenantId;
+        // Which tenant this request acts in. A user may hold several, so the client selects one
+        // and it is checked against the session here — the only place a tenant becomes trusted.
+        var selection = TenantSelection.Resolve(session, TenantSelection.ReadRequested(context.Request));
+        if (selection.IsDenied)
+        {
+            logger.LogWarning(
+                "User {UserId} requested tenant {TenantId}, which their session does not grant.",
+                session.UserId, context.Request.Headers[Gateway.TikiHeaderNames.SelectTenant].FirstOrDefault());
+
+            context.Fail("No access to the requested tenant.");
+            return;
+        }
+
+        // Ambient context comes from the *session*, not the token: the session is current, and
+        // a long-lived token's copy of a user's access may be stale.
+        ServiceContext.TenantId = selection.TenantId;
         ServiceContext.UserId = session.UserId;
         ServiceContext.UserType = session.UserType;
 
