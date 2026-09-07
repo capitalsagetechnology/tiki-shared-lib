@@ -5,6 +5,54 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
+## [0.4.0] — 2026-09-07
+
+Versioning and CI. No API change to `Tiki.Shared` itself — but every package this repo publishes
+now carries **one** version, and every consumer pins **one** number.
+
+### Changed — one `TikiVersion` for every package in this repo
+
+`Tiki.Shared` and all five `Tiki.Grpc.Contracts.*` packages take their version from
+`<TikiVersion>` in `Directory.Build.props`, and the pipeline publishes them together.
+
+They used to version independently, on the theory that each should release on its own cadence.
+What that produced in practice was six numbers to keep straight across five consuming repos, and
+consumers pinning combinations that had never existed: `tiki-compliance-api` asked for three
+contract versions that were never published, and `tiki-integrations-api` pinned `Tiki.Shared`
+0.1.0 — two breaking releases behind the API it was actually compiled against, which is why it no
+longer built at all.
+
+One number removes the question "which contract version goes with which `Tiki.Shared`?", and it is
+answerable by reading one line. A package with no changes republishes as a no-op.
+
+0.4.0 rather than 0.3.1, because it has to clear every version already published: `Tiki.Shared`
+0.3.0 and `Tiki.Grpc.Contracts.Integration` 0.3.0 both exist, and a version is immutable once
+pushed.
+
+**Migrating.** In each consuming repo's `Directory.Packages.props`:
+
+```diff
++   <TikiVersion>0.4.0</TikiVersion>
+-   <PackageVersion Include="Tiki.Shared" Version="0.3.0" />
+-   <PackageVersion Include="Tiki.Grpc.Contracts.Identity" Version="0.2.0" />
++   <PackageVersion Include="Tiki.Shared" Version="$(TikiVersion)" />
++   <PackageVersion Include="Tiki.Grpc.Contracts.Identity" Version="$(TikiVersion)" />
+```
+
+### Changed — three workflows became one serial pipeline
+
+`build-test.yml`, `publish-shared.yml` and `publish-grpc-contract.yml` all triggered on the same
+push: three checkouts, three restores and three builds of one commit, finishing in an order nobody
+controlled. "The tests passed" and "the package was published" were separate events with no
+guaranteed relationship — a publish could complete while the test run for that same commit was
+still going.
+
+`ci.yml` is one job whose steps run in order, so nothing is published by a commit whose tests have
+not already passed in that same run.
+
+**The tag namespace collapses with the versions.** `shared-v*.*.*` and `grpc-<service>-v*.*.*` are
+replaced by a single `tiki-v*.*.*`, verified against `<TikiVersion>`.
+
 ## [grpc-compliance-v0.2.0] — 2026-09-07
 
 `Tiki.Grpc.Contracts.Compliance` only ever declared `GetVerificationStatus`, but

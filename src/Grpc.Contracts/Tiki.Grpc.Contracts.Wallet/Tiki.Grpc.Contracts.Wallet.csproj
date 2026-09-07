@@ -3,7 +3,7 @@
   <PropertyGroup>
     <IsPackable>true</IsPackable>
     <PackageId>Tiki.Grpc.Contracts.Wallet</PackageId>
-    <Version>0.1.0</Version>
+    <Version>$(TikiVersion)</Version>
     <Description>gRPC contract for Wallet Service — .proto-derived client stub and service base class. Placeholder shape; real RPCs to follow.</Description>
     <PackageTags>tiki;grpc;contracts;wallet</PackageTags>
     <RootNamespace>Tiki.Grpc.Contracts.Wallet</RootNamespace>
