@@ -40,4 +40,16 @@ public static class ServiceCollectionExtensions
         app.UseMiddleware<ErrorHandlingMiddleware>();
         return app;
     }
+
+    /// <summary>
+    /// Adds inbound service-to-service signature verification to the pipeline. Place it
+    /// after <c>UseAuthentication()</c> and before <c>UseAuthorization()</c>: it needs the
+    /// endpoint to have been resolved (to see <c>[RequireServiceToken]</c>), and it must run
+    /// before any authorization policy reads the identity it establishes.
+    /// </summary>
+    public static IApplicationBuilder UseTikiServiceAuth(this IApplicationBuilder app)
+    {
+        app.UseMiddleware<Auth.ServiceRequestAuthenticationMiddleware>();
+        return app;
+    }
 }

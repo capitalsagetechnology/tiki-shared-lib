@@ -68,8 +68,9 @@ a project reference, **never** copy-pasted between repos.
 | `Caching` | `ITieredCache` — L1 memory + L2 Redis, one API |
 | `Querydsl` | Dynamic filter/sort/paginate over `IQueryable<T>`, zero EF Core |
 | `Messaging` | Kafka/Redpanda producer, consumer base class, retry/DLQ routing |
-| `Grpc` | Service-token interceptors, trace propagation |
-| `Auth` | `ServiceContext`, `IServiceTokenProvider` |
+| `Grpc` | Request-signing interceptors (client + server), trace propagation |
+| `Auth` | JWT validation, service-to-service request signing, Redis sessions, permissions |
+| `Gateway` | The header contract between the gateway and the services behind it |
 | `HealthChecks` | `/health/live`, `/health/ready` with Postgres/Redis/Redpanda checks |
 | `Logging` | Request logging, client IP capture, `[Sensitive]` masking, Serilog enrichers |
 | `Http` | `AddTikiExternalHttpClient()` — session-lifecycle logging for outbound calls |
@@ -85,14 +86,66 @@ dotnet add package Tiki.Shared --version <pinned-version>
 ```csharp
 builder.Services
     .AddTikiTelemetry("wallet-service", builder.Configuration)
-    .AddTikiCache(builder.Configuration)
+    .AddTikiCache("wallet-service", builder.Configuration)
     .AddTikiMessaging(builder.Configuration)
-    .AddTikiHealthChecks(builder.Configuration);
+    .AddTikiHealthChecks(builder.Configuration)
+
+    // End-user auth: validates the JWT, then checks the session behind it is still live.
+    .AddTikiSessions(builder.Configuration)
+    .AddTikiJwtAuth(builder.Configuration)
+
+    // Service-to-service auth: signs outbound calls, verifies inbound ones.
+    .AddTikiServiceAuth(builder.Configuration);
+
+var app = builder.Build();
+app.UseTikiCore();
+app.UseAuthentication();
+app.UseTikiServiceAuth();
+app.UseAuthorization();
 ```
 
 See each module's own doc comments for the full wiring surface. No source-reading
 should be required to get telemetry, caching, messaging, and auth wired in under
 30 minutes.
+
+## How a request is authenticated
+
+Two mechanisms, doing two different jobs. Getting them confused is how a platform ends up
+trusting a header a client sent.
+
+**End-user requests** carry a JWT. `AddTikiJwtAuth()` validates the signature, issuer,
+audience and lifetime — and then does the part a JWT cannot do on its own. A signed token is
+unrevocable: once issued it stays valid until it expires, so a logout would leave a working
+token behind. Tiki's access tokens therefore carry only a session pointer (`sid`), and the
+authority lives in a Redis session record: who the user is, which tenant, and what they may
+do. Revoking that record logs the user out of every service at once, and a permission change
+lands on their next request rather than at their next login.
+
+Reading it from Redis rather than calling Identity is deliberate. Every authenticated
+request on every service needs this; routing it through Identity would make Identity a
+synchronous dependency of the whole platform and its single busiest component. A short
+in-process cache (5s) sits in front of Redis, so a burst of requests from one user costs one
+round trip. That window is the one real trade-off, and it is documented where it is
+configured: revocation propagates within it.
+
+Permissions are checked declaratively against that same in-memory session:
+
+```csharp
+[RequiresPermission(TikiPermissions.TenantWrite)]
+public Task<IActionResult> Update(...) { }
+```
+
+**Service-to-service requests** are HMAC-signed over a canonical form of the request itself —
+method, path, sorted query, timestamp, nonce, body hash — not carrying a bearer token. The
+distinction matters: a bearer token is a password, replayable against any endpoint with any
+body by whoever observes it. A signature over the request binds the credential to the one
+call it was minted for. Three checks must all pass — signature (authenticity and integrity),
+timestamp inside the skew window (bounds replay), and an unused nonce (closes it) — and each
+service holds its own key, so a compromise is contained to one service.
+
+The forwarded identity headers (`X-Tenant-Id`, `X-User-Id`) are trustworthy only because the
+signature covers them, and only after it verifies. The gateway strips every one of them from
+inbound client traffic first — see `TikiHeaderNames.StrippedFromClient`.
 
 ## Non-negotiables
 

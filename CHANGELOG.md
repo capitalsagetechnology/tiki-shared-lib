@@ -5,6 +5,94 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
+## [0.2.0] — 2026-09-07
+
+Security release. Two of the three changes below are **breaking**; both replace a
+mechanism that was weaker than it looked.
+
+### Changed — BREAKING: service-to-service auth is now a signed request, not a bearer token
+
+`IServiceTokenProvider` / `HmacServiceTokenProvider` are **removed**, along with
+`ServiceTokenValidationMiddleware`, `ServiceTokenClientInterceptor` and
+`ServiceTokenAuthInterceptor`.
+
+The old token was an HMAC over `serviceId.expiry` and nothing else. That made it a
+password: anyone who observed one could replay it against **any** endpoint with **any**
+body until it expired, and because every service shared one secret, a single leak allowed
+impersonating any service to any other.
+
+The replacement signs a canonical form of the request itself — method, path, sorted query,
+timestamp, nonce and a SHA-256 of the body — so a captured signature cannot be pointed at a
+different route or have its payload edited. Freshness is bounded by a clock-skew window and
+replay is closed by a nonce store. Keys are now per service, so a compromise is contained to
+one service and rotation is a per-pair change.
+
+**Migrating.** In `Program.cs`:
+
+```diff
+- services.AddSingleton<IServiceTokenProvider, HmacServiceTokenProvider>();
++ services.AddTikiServiceAuth(builder.Configuration);
+...
+- app.UseMiddleware<ServiceTokenValidationMiddleware>();
++ app.UseTikiServiceAuth();
+```
+
+Configuration moves from `Tiki:Auth:HmacServiceToken` to `Tiki:Auth:ServiceIdentity`, which
+takes this service's own `ServiceId` and `SigningSecret` plus a `TrustedCallers` map of the
+services allowed to call it. `[RequireServiceToken]` is unchanged. Outbound calls use
+`AddTikiServiceClient<T>()` (HTTP) or `AddTikiGrpcClient<T>()` (gRPC) and need no call-site
+changes.
+
+### Added — sessions in Redis, so logout and permission changes take effect immediately
+
+A signed JWT cannot be revoked: once issued it is valid until it expires, and nothing a user
+does can call it back. Access tokens now carry only a session pointer (`sid`), and authority
+lives in a Redis session record that Identity writes and every service reads.
+
+- `TikiSession` — user, tenant, actor type, and the resolved permission set.
+- `ISessionStore` / `RedisSessionStore` — create, revoke, revoke-all-for-user, list a user's
+  sessions, and rewrite permissions on every live session in place.
+- `CachingSessionStore` — a short in-process window (5s by default) in front of Redis, so a
+  burst of requests from one user costs one round trip rather than one each. The trade-off
+  is explicit: revocation propagates within that window. Set `CacheWindow` to zero for
+  strictly-immediate revocation.
+- `[RequiresPermission(...)]` + `TikiPermissions` — declarative permission checks evaluated
+  against the already-loaded session, no database query and no call to Identity.
+- `ISessionAccessor` — the current request's session, anywhere in its call graph.
+
+### Added — `AddTikiJwtAuth()`, replacing hand-rolled `AddJwtBearer` in every service
+
+Every service was configuring JWT validation itself and the copies had drifted. Identity's
+own registration had `ValidateIssuer = false` and `ValidateAudience = false`, which would
+have accepted a token minted by anything holding the same signing key.
+
+`AddTikiJwtAuth()` requires issuer and audience, pins the signing algorithm, sets
+`MapInboundClaims = false` (the default rewrites short claim names to SOAP-era URIs, so code
+reading `sub` silently finds nothing), cuts `ClockSkew` from the 5-minute default to 30
+seconds, rejects a refresh token presented as a bearer token, and validates the session.
+Supports a symmetric key today and JWKS for the move to asymmetric signing.
+
+### Added — the gateway header contract
+
+`TikiHeaderNames` names every header the gateway and services exchange in one place,
+including `StrippedFromClient`: the headers the gateway must remove from inbound client
+requests. Without that list, a client could send `X-Tenant-Id` and read another tenant's
+data.
+
+### Added — `Gateway`, `Auth.Sessions`, `Auth.Authorization` modules; `UnauthorizedException` and `ForbiddenException` (mapped to 401/403).
+
+### Added — full tenant management to `Tiki.Grpc.Contracts.Identity` (0.2.0)
+
+`TenantDetails` gains `country_iso2`, `can_hold_wallet`, `default_currency`,
+`supported_currencies`, `is_active` and timestamps. New RPCs: `GetTenantByCountry`,
+`ListTenants`, and `GetTenantWalletPolicy` — the last so Wallet can answer "provision a
+wallet, and in what currency?" in one round trip instead of re-deriving the rule from a
+full tenant record.
+
+**Breaking**: `TenantDetails.default_currencies` (repeated, field 4) is replaced by
+`default_currency` (singular, field 7) plus `supported_currencies` (field 8), and
+`country` moves from field 5 to field 4.
+
 ## [Unreleased]
 
 

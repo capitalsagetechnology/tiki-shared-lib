@@ -4,11 +4,16 @@ using Microsoft.IdentityModel.Tokens;
 namespace Tiki.Shared.Auth;
 
 /// <summary>
-/// Fetches and caches the JSON Web Key Set exposed by Identity Service's OAuth2
-/// authorization server. Not wired to a concrete <see cref="IServiceTokenProvider"/> in v1
-/// — it exists so the real OAuth2 client-credentials provider that eventually replaces
-/// <see cref="HmacServiceTokenProvider"/> has signing-key resolution ready to use, without
-/// requiring a package-level change to adopt.
+/// Fetches and caches the JSON Web Key Set published by Identity.
+///
+/// <para>
+/// <see cref="TikiJwtExtensions.AddTikiJwtAuth"/> already resolves JWKS itself when
+/// <see cref="TikiJwtOptions.JwksUri"/> is set, so nothing in the request path needs this
+/// today. It stays for the callers that need keys outside an authentication handler — a
+/// background worker validating a token off a Kafka message, say — and for the move from
+/// the interim symmetric key to asymmetric signing, where a service should verify with a
+/// public key and never hold a value capable of minting a token.
+/// </para>
 /// </summary>
 public sealed class JwksClient(HttpClient httpClient)
 {
