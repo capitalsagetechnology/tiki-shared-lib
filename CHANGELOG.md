@@ -5,6 +5,58 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
+## [0.5.0] — 2026-09-07
+
+### Changed — the health endpoints answer JSON, and `/health/ready` names the dependency that failed
+
+`/health/live` and `/health/ready` returned the ASP.NET default: the bare string `Healthy` as
+`text/plain`. Enough for a container healthcheck, which reads only the status code. Not enough for
+anything else — a failing `/health/ready` said that *something* was unreachable and nothing more,
+so working out whether it was Postgres, Redis or Redpanda meant going to the logs of the pod that
+was already refusing traffic.
+
+Both now return `application/json`:
+
+```jsonc
+// GET /health/live  -> 200
+{ "status": "healthy", "service": "wallet-service", "checkedAt": "...", "totalDurationMs": 0.01 }
+
+// GET /health/ready -> 503
+{
+  "status": "unhealthy",
+  "service": "wallet-service",
+  "checkedAt": "2026-09-07T15:04:11.2210000+00:00",
+  "totalDurationMs": 12.35,
+  "checks": {
+    "postgres": { "status": "healthy",   "durationMs": 3.1 },
+    "redis":    { "status": "unhealthy", "description": "Redis connectivity check failed.",
+                  "durationMs": 1.2, "error": "RedisConnectionException" },
+    "redpanda": { "status": "healthy",   "description": "3 broker(s) reachable.", "durationMs": 8.0 }
+  }
+}
+```
+
+**Status codes are unchanged** — healthy and degraded are 200, unhealthy is 503 — because that is
+what container healthchecks and the gateway's active probing read. The body is for whoever is
+reading the failure, not for the machine acting on it. Nothing in this platform parsed the old
+body, so nothing needs a change to keep working.
+
+Two details worth knowing:
+
+- **`error` is an exception's type name, never its message.** These endpoints are unauthenticated
+  and reachable by anything on the mesh, and a driver exception carries the connection it failed
+  on — host, database, sometimes credentials. `NpgsqlException` tells an operator which layer
+  broke; the message would tell a reader the topology. A test asserts a planted password never
+  reaches the body.
+- **`/health/live` omits `checks` entirely** rather than returning an empty object, because an
+  empty object reads as "checked everything, found nothing wrong" rather than "checked nothing" —
+  and checking nothing is the whole point of a liveness probe.
+
+`MapTikiHealthChecks()` takes an optional service name, defaulting to `Tiki:Telemetry:ServiceName`
+so a health body and a trace agree on what the service is called. `HealthCheckExtensions.WriteAsync`
+is public, so a host that maps the endpoints itself — the workers, which map by tag — gets the same
+body rather than a second, nearly-identical one.
+
 ## [0.4.0] — 2026-09-07
 
 Versioning and CI. No API change to `Tiki.Shared` itself — but every package this repo publishes
