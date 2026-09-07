@@ -86,6 +86,33 @@ public static class TikiHeaderNames
     public const string ForwardedFor = "X-Forwarded-For";
 
     /// <summary>
+    /// The base URL of the client application this request came from, so a service that asks
+    /// for an email can have the action link point back at the right front end.
+    /// </summary>
+    /// <remarks>
+    /// <b>Untrusted, deliberately.</b> It is not in <see cref="StrippedFromClient"/>, because
+    /// the caller that legitimately sets it — the admin BFF — reaches other services through
+    /// the gateway like any other client, so stripping it would remove it from the one sender
+    /// that has a right to it.
+    ///
+    /// <para>
+    /// A caller-supplied destination is a caller-supplied destination: anything able to reach
+    /// the gateway could ask for a Tiki-branded invitation pointing at a page it controls. That
+    /// is why the value never decides anything on its own — the Notification service checks it
+    /// against a configured allow-list of origins and refuses anything unlisted. The header
+    /// chooses <em>which</em> of the permitted clients a link belongs to; it cannot add one.
+    /// </para>
+    ///
+    /// <para>
+    /// Alternatives considered: pinning the URL in the Notification service's own configuration
+    /// means one client only, and a redeploy of the mail service to onboard a second front end.
+    /// Stamping it at the gateway means the gateway has to know which client each request came
+    /// from, which is exactly the thing it cannot tell.
+    /// </para>
+    /// </remarks>
+    public const string ClientBaseUrl = "X-Tiki-Client-Base-Url";
+
+    /// <summary>
     /// Headers the gateway removes from every inbound client request before proxying.
     /// Without this, a client could simply send <c>X-Tenant-Id</c> and read another
     /// tenant's data — the services behind the gateway trust these values.

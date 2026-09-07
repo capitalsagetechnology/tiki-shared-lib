@@ -5,6 +5,40 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
+## [0.7.0] — 2026-09-07
+
+### Changed — authorization denies by default
+
+`AddTikiJwtAuth` previously called `AddAuthorization()` with no fallback policy, which means an
+endpoint carrying no authorization attribute at all is anonymous. Every service inherited that:
+a new controller was public until someone remembered `[Authorize]`, and nothing failed if they
+did not — no error, no failing test, no line of code stating the endpoint was ever meant to be
+protected.
+
+It now registers a fallback policy requiring an authenticated user, so the mistake inverts:
+forget the attribute and the endpoint answers 401 the first time it is called. Opening something
+up takes an explicit `[AllowAnonymous]`, which is visible in review and greppable across the
+platform.
+
+**Migration.** Anything genuinely public needs `[AllowAnonymous]` before upgrading — sign-in,
+sign-up, password reset, public reference data — and so does anything authenticated by something
+other than the JWT pipeline. In this platform that is the gRPC surface, which
+`ServiceAuthInterceptor` authenticates by HMAC signature: `app.MapGrpcService<T>()` becomes
+`app.MapGrpcService<T>().AllowAnonymous()`, or every service-to-service call is rejected before
+the interceptor runs.
+
+`MapTikiHealthChecks` handles its own case — both endpoints are now explicitly anonymous, because
+a probe has no credential and an orchestrator that reads 401 from `/health/live` restarts the
+container forever.
+
+### Added — `TikiHeaderNames.ClientBaseUrl`
+
+`X-Tiki-Client-Base-Url`, so a service raising an email can say which front end its action link
+belongs to. Untrusted by design and not in `StrippedFromClient`: the sender that legitimately
+sets it — the admin BFF — reaches other services through the gateway like any other client. The
+Notification service checks the value against a configured allow-list, so the header picks one of
+the permitted clients and cannot add one.
+
 ## [0.6.0] — 2026-09-07
 
 ### Added — `Tiki.Contracts.Notifications`

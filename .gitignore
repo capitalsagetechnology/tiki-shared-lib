@@ -18,3 +18,10 @@ artifacts/
 .DS_Store
 Thumbs.db
 /.claude/
+
+## Environment
+# This repo needs no .env today, but one written here would hold the same central secrets
+# every sibling's does.
+.env
+.env.*
+!.env.example
