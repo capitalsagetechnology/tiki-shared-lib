@@ -1,11 +1,29 @@
 name: Publish Tiki.Shared
 
-# Deliberately its own tag namespace (shared-v*.*.*, not v*.*.*) so Tiki.Shared's release
-# cadence never collides with a grpc-<service>-v*.*.* contract-package tag on the same repo.
+# Publishes on every push to dev and main, and on a release tag.
+#
+# The three trigger into different version shapes, because publishing the *same* version
+# number repeatedly does not work: NuGet treats a version as immutable, so a second push of
+# 0.3.0 is either rejected or silently ignored, and consumers keep resolving the first build
+# forever while appearing to be up to date.
+#
+#   push to dev   ->  0.3.0-dev.<run>    prerelease; only picked up by a consumer that opts in
+#   push to main  ->  0.3.0              stable; skipped if that version already exists
+#   shared-v0.3.0 ->  0.3.0              explicit release, verified against the csproj
+#
+# A stable version is therefore released by bumping <Version> in the csproj and merging to
+# main — the merge that changes the number is the release.
+
 on:
   push:
+    branches: [main, dev]
+    paths:
+      - "src/Tiki.Shared/**"
+      - "Directory.Build.props"
+      - ".github/workflows/publish-shared.yml"
     tags:
       - "shared-v*.*.*"
+  workflow_dispatch:
 
 env:
   DOTNET_NOLOGO: true
@@ -17,41 +35,53 @@ jobs:
     permissions:
       contents: read
       packages: write
+
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # full history — required for the ancestry check below
-
-      - name: Refuse to run unless the tag is reachable from main
-        run: |
-          git fetch origin main --quiet
-          if ! git merge-base --is-ancestor "${{ github.sha }}" origin/main; then
-            echo "::error::Tag ${{ github.ref_name }} (commit ${{ github.sha }}) is not reachable from main. Refusing to publish."
-            exit 1
-          fi
-          echo "Verified: ${{ github.ref_name }} is reachable from main."
-
-      - name: Refuse to run unless the tag version matches Tiki.Shared's <Version>
-        run: |
-          TAG_VERSION="${GITHUB_REF_NAME#shared-v}"
-          PROJECT_VERSION=$(grep -oP '(?<=<Version>)[^<]+' src/Tiki.Shared/Tiki.Shared.csproj | head -n1)
-
-          if [ -z "$PROJECT_VERSION" ]; then
-            echo "::error::src/Tiki.Shared/Tiki.Shared.csproj has no <Version> element to compare against."
-            exit 1
-          fi
-
-          if [ "$TAG_VERSION" != "$PROJECT_VERSION" ]; then
-            echo "::error::Tag version ($TAG_VERSION) does not match <Version> in Tiki.Shared.csproj ($PROJECT_VERSION)."
-            exit 1
-          fi
-
-          echo "Verified: tag version $TAG_VERSION matches Tiki.Shared.csproj."
+          fetch-depth: 0
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
+
+      - name: Resolve the version to publish
+        id: version
+        run: |
+          set -euo pipefail
+
+          PROJECT_VERSION=$(grep -oP '(?<=<Version>)[^<]+' src/Tiki.Shared/Tiki.Shared.csproj | head -n1)
+          if [ -z "$PROJECT_VERSION" ]; then
+            echo "::error::src/Tiki.Shared/Tiki.Shared.csproj has no <Version> element."
+            exit 1
+          fi
+
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG_VERSION="${GITHUB_REF_NAME#shared-v}"
+            # A tag that disagrees with the csproj would publish a package whose contents do
+            # not match the version anyone reading the repo would expect.
+            if [ "$TAG_VERSION" != "$PROJECT_VERSION" ]; then
+              echo "::error::Tag version ($TAG_VERSION) does not match <Version> ($PROJECT_VERSION)."
+              exit 1
+            fi
+            VERSION="$PROJECT_VERSION"
+            CHANNEL="release"
+
+          elif [ "${GITHUB_REF_NAME}" = "main" ]; then
+            VERSION="$PROJECT_VERSION"
+            CHANNEL="stable"
+
+          else
+            # Monotonic, and sorts below the stable release of the same number — so a consumer
+            # on 0.3.0 is never silently upgraded onto an unreviewed dev build.
+            VERSION="${PROJECT_VERSION}-dev.${GITHUB_RUN_NUMBER}"
+            CHANNEL="prerelease"
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+          echo "Publishing $VERSION ($CHANNEL)"
 
       - name: Restore
         run: dotnet restore Tiki-shared.sln
@@ -59,17 +89,33 @@ jobs:
       - name: Build
         run: dotnet build Tiki-shared.sln --no-restore --configuration Release
 
+      # Gates the publish. A package that fails its own tests should never reach a feed, where
+      # it becomes something every consuming service resolves.
       - name: Test
         run: dotnet test Tiki-shared.sln --no-build --configuration Release
 
-      - name: Pack Tiki.Shared only
-        run: >
-          dotnet pack src/Tiki.Shared/Tiki.Shared.csproj --no-build --configuration Release
-          --output ./artifacts
+      - name: Pack
+        run: |
+          dotnet pack src/Tiki.Shared/Tiki.Shared.csproj \
+            --no-build --configuration Release \
+            -p:PackageVersion=${{ steps.version.outputs.version }} \
+            --output ./artifacts
 
       - name: Push to GitHub Packages
-        run: >
-          dotnet nuget push "./artifacts/Tiki.Shared.*.nupkg"
-          --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
-          --api-key ${{ secrets.GITHUB_TOKEN }}
-          --skip-duplicate
+        run: |
+          dotnet nuget push "./artifacts/Tiki.Shared.*.nupkg" \
+            --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" \
+            --api-key ${{ secrets.GITHUB_TOKEN }} \
+            --skip-duplicate
+
+      - name: Summary
+        run: |
+          {
+            echo "### Tiki.Shared \`${{ steps.version.outputs.version }}\` published"
+            echo
+            echo "Channel: **${{ steps.version.outputs.channel }}**"
+            echo
+            echo '```bash'
+            echo 'dotnet add package Tiki.Shared --version ${{ steps.version.outputs.version }}'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
