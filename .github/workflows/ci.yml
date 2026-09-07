@@ -1,0 +1,222 @@
+name: CI
+
+# One pipeline, one job, strictly in order:
+#
+#   restore -> build -> test -> layering check -> pack -> push -> summary
+#
+# This replaces build-test.yml, publish-shared.yml and publish-grpc-contract.yml, which ran as
+# three independent workflows on the same push. That was three checkouts, three restores and
+# three builds of the same commit, finishing in an order nobody controlled — so "the tests
+# passed" and "the package was published" were separate events with no guaranteed relationship
+# between them. A publish could and did complete while the test workflow for the same commit was
+# still running.
+#
+# A single job makes the ordering structural rather than a convention: every step below runs on
+# the same checkout, and the first failure stops the rest. Nothing is published by a commit whose
+# tests have not already passed in this same run.
+#
+#   pull request           ->  build and test only, publishes nothing
+#   push to dev            ->  <Version>-dev.<run>   prerelease, every package
+#   push to main           ->  <Version>             stable, every package
+#   shared-v1.2.3          ->  1.2.3                 Tiki.Shared only, verified against the csproj
+#   grpc-<service>-v1.2.3  ->  1.2.3                 that one contract, verified against the csproj
+#
+# Every push publishes every package. --skip-duplicate makes an unchanged version a no-op, so
+# there is no need to work out which projects changed — and no way to forget one, which is how
+# tiki-compliance-api came to pin contract versions that had never been published.
+
+on:
+  pull_request:
+    branches: [main, dev]
+  push:
+    branches: [main, dev]
+    # No `paths` filter, deliberately. A paths filter applies to tag pushes as well as branch
+    # pushes, so cutting a release tag on a commit that happened not to touch those paths would
+    # silently publish nothing — and the failure looks exactly like a green run.
+    tags:
+      - "shared-v*.*.*"
+      - "grpc-*-v*.*.*"
+  workflow_dispatch:
+
+# Runs against one ref queue rather than overlap, so two pushes in quick succession cannot race
+# to publish. Pull requests still cancel, because there is nothing to serialise there.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history — the tag ancestry check below needs it
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore Tiki-shared.sln
+
+      - name: Build
+        run: dotnet build Tiki-shared.sln --no-restore --configuration Release
+
+      # Gates everything below it. A package that fails its own tests must never reach a feed,
+      # where it becomes something every consuming service resolves.
+      - name: Test
+        run: >
+          dotnet test Tiki-shared.sln --no-build --configuration Release
+          --logger "trx;LogFileName=test-results.trx"
+          --collect:"XPlat Code Coverage"
+
+      - name: Publish test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: "**/test-results.trx"
+
+      # Layering NFR: no reference, direct or transitive, to any specific database provider or
+      # any vendor-specific tracing/logging SDK or messaging framework. The one deliberate
+      # exception is Persistence/, which references the base, provider-agnostic
+      # Microsoft.EntityFrameworkCore package directly — allowed here, but a concrete provider
+      # (Npgsql, SqlServer, Sqlite, ...) never is.
+      - name: Verify no disallowed package references
+        run: |
+          set -euo pipefail
+          ASSETS="src/Tiki.Shared/obj/project.assets.json"
+          [ -f "$ASSETS" ] || { echo "::error::$ASSETS not found — did the restore step run?"; exit 1; }
+
+          DISALLOWED='Microsoft\.EntityFrameworkCore\.(SqlServer|Sqlite|Cosmos|Relational)|Npgsql\.EntityFrameworkCore|Pomelo\.EntityFrameworkCore|MySql\.EntityFrameworkCore|Datadog\.Trace|MassTransit'
+          if grep -Eiq "$DISALLOWED" "$ASSETS"; then
+            echo "::error::Disallowed package reference found in Tiki.Shared (a concrete EF Core provider, a vendor tracer, or a messaging framework)."
+            grep -Eio "$DISALLOWED" "$ASSETS" | sort -u
+            exit 1
+          fi
+
+          echo "No disallowed package references found."
+
+      # ---------------------------------------------------------------------------------------
+      # Everything below publishes, so none of it runs for a pull request.
+      # ---------------------------------------------------------------------------------------
+
+      - name: Refuse to publish a tag that is not reachable from main
+        if: github.event_name != 'pull_request' && startsWith(github.ref, 'refs/tags/')
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          if ! git merge-base --is-ancestor "${{ github.sha }}" origin/main; then
+            echo "::error::Tag ${{ github.ref_name }} (${{ github.sha }}) is not reachable from main. Refusing to publish."
+            exit 1
+          fi
+          echo "Verified: ${{ github.ref_name }} is reachable from main."
+
+      - name: Pack
+        id: pack
+        if: github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          rm -rf ./artifacts && mkdir -p ./artifacts
+
+          # A tag names exactly one package and pins its version. A branch push publishes them
+          # all, at whatever each csproj declares.
+          TAG_TARGET=""
+          TAG_VERSION=""
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            case "${GITHUB_REF_NAME}" in
+              shared-v*)
+                TAG_TARGET="Tiki.Shared"
+                TAG_VERSION="${GITHUB_REF_NAME#shared-v}"
+                ;;
+              grpc-*-v*)
+                service="${GITHUB_REF_NAME#grpc-}"
+                service="${service%%-v*}"
+                case "$service" in
+                  identity|wallet|transaction|compliance|integration) ;;
+                  *)
+                    echo "::error::Unknown service '$service' in tag ${GITHUB_REF_NAME}. Expected one of: identity, wallet, transaction, compliance, integration."
+                    exit 1
+                    ;;
+                esac
+                TAG_TARGET="Tiki.Grpc.Contracts.$(tr '[:lower:]' '[:upper:]' <<< "${service:0:1}")${service:1}"
+                TAG_VERSION="${GITHUB_REF_NAME##*-v}"
+                ;;
+              *)
+                echo "::error::Unrecognised tag ${GITHUB_REF_NAME}."
+                exit 1
+                ;;
+            esac
+          fi
+
+          packed=0
+          for proj in src/Tiki.Shared/Tiki.Shared.csproj src/Grpc.Contracts/*/*.csproj; do
+            name="$(basename "$proj" .csproj)"
+
+            base="$(grep -oP '(?<=<Version>)[^<]+' "$proj" | head -n1)"
+            if [ -z "$base" ]; then
+              echo "::error::$proj has no <Version> element."
+              exit 1
+            fi
+
+            if [ -n "$TAG_TARGET" ]; then
+              [ "$name" = "$TAG_TARGET" ] || continue
+              # A tag that disagrees with the csproj would publish a package whose contents do
+              # not match the version anyone reading the repo would expect.
+              if [ "$TAG_VERSION" != "$base" ]; then
+                echo "::error::Tag version ($TAG_VERSION) does not match <Version> in $proj ($base)."
+                exit 1
+              fi
+              version="$base"
+            elif [ "${GITHUB_REF_NAME}" = "main" ]; then
+              version="$base"
+            else
+              # Monotonic, and sorts below the stable release of the same number — so a consumer
+              # on 0.3.0 is never silently upgraded onto an unreviewed dev build.
+              version="${base}-dev.${GITHUB_RUN_NUMBER}"
+            fi
+
+            echo "Packing $name $version"
+            dotnet pack "$proj" --no-build --configuration Release \
+              -p:PackageVersion="$version" --output ./artifacts
+            packed=$((packed + 1))
+          done
+
+          if [ "$packed" -eq 0 ]; then
+            echo "::error::Nothing was packed. A tag matched no project — check ${GITHUB_REF_NAME}."
+            exit 1
+          fi
+
+          echo "packed=$packed" >> "$GITHUB_OUTPUT"
+
+      - name: Push to GitHub Packages
+        if: github.event_name != 'pull_request'
+        run: |
+          dotnet nuget push "./artifacts/*.nupkg" \
+            --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" \
+            --api-key ${{ secrets.GITHUB_TOKEN }} \
+            --skip-duplicate
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            if [ "${{ github.event_name }}" = "pull_request" ]; then
+              echo "### Built and tested"
+              echo
+              echo "A pull request publishes nothing."
+            else
+              echo "### Published ${{ steps.pack.outputs.packed }} package(s)"
+              echo
+              ls -1 ./artifacts/*.nupkg 2>/dev/null | sed 's|.*/|- `|;s|\.nupkg$|`|' || echo "_Nothing was packed._"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
