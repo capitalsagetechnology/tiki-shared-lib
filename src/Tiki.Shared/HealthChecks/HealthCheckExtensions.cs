@@ -73,17 +73,21 @@ public static class HealthCheckExtensions
         serviceName ??= endpoints.ServiceProvider
             .GetService<IConfiguration>()?["Tiki:Telemetry:ServiceName"];
 
+        // Anonymous, explicitly. AddTikiJwtAuth denies by default, and a probe has no
+        // credential to present: an orchestrator that gets 401 from /health/live concludes the
+        // container is broken and restarts it forever. The endpoints expose only up/down and
+        // dependency names, never data.
         endpoints.MapHealthChecks("/health/live", new HealthCheckOptions
         {
             Predicate = _ => false,
             ResponseWriter = (context, report) => WriteAsync(context, report, serviceName, includeChecks: false),
-        });
+        }).AllowAnonymous();
 
         endpoints.MapHealthChecks("/health/ready", new HealthCheckOptions
         {
             Predicate = check => check.Tags.Contains(ReadyTag),
             ResponseWriter = (context, report) => WriteAsync(context, report, serviceName, includeChecks: true),
-        });
+        }).AllowAnonymous();
 
         return endpoints;
     }

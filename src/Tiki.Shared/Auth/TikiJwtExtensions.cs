@@ -88,7 +88,22 @@ public static class TikiJwtExtensions
         // Scoped, not singleton: it reads ISessionAccessor, which is per-request. Registered
         // as a singleton this fails at startup under DI validation — which is how it was caught.
         services.AddScoped<IAuthorizationHandler, Authorization.PermissionAuthorizationHandler>();
-        services.AddAuthorization();
+
+        services.AddAuthorization(authorization =>
+        {
+            // Deny by default. Without a fallback policy an endpoint carrying no authorization
+            // attribute at all is anonymous, so forgetting [Authorize] on a new controller
+            // publishes it — silently, and with no failing test, because nothing in the code
+            // says the endpoint was ever meant to be protected.
+            //
+            // With this policy the mistake inverts: forget the attribute and the endpoint
+            // returns 401 the first time anyone calls it. Opening something up now takes an
+            // explicit [AllowAnonymous], which is visible in review and greppable across the
+            // platform.
+            authorization.FallbackPolicy = new AuthorizationPolicyBuilder()
+                .RequireAuthenticatedUser()
+                .Build();
+        });
 
         return services;
     }
