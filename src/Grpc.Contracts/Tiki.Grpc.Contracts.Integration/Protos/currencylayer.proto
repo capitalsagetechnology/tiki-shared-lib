@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+option csharp_namespace = "Tiki.Grpc.Contracts.Integration";
+
+package tiki.grpc.contracts.integration;
+
+// CurrencyLayer FX-rates mesh API owned by the Integration service.
+service CurrencyLayerService {
+  rpc GetLiveRates (GetLiveRatesRequest) returns (GetLiveRatesReply);
+}
+
+message GetLiveRatesRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  repeated string currencies = 3;
+  optional string source = 4;
+}
+
+message GetLiveRatesReply {
+  string terms = 1;
+  string privacy = 2;
+  int64 timestamp = 3;
+  string source = 4;
+  map<string, double> quotes = 5;
+}
