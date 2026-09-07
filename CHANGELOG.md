@@ -5,6 +5,59 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
+## [0.3.0] — 2026-09-07
+
+Team management and multi-tenant access. **Breaking** — a user can now hold different roles in
+different tenants, which the previous single-tenant session could not express.
+
+### Changed — BREAKING: `TikiSession` carries per-tenant access, not one tenant
+
+`TikiSession.TenantId` and `TikiSession.Permissions` are replaced by `GlobalPermissions`
+(applying in every tenant, including ones created later) and `TenantAccess` — a
+`tenantId → TenantGrant` map. Permission checks now take the tenant they apply in:
+`session.HasPermission(module, action, tenantId)`.
+
+`ISessionStore.UpdatePermissionsAsync` becomes `UpdateAccessAsync`, taking both halves.
+
+### Changed — BREAKING: permissions are a module × action grid
+
+`TikiPermissions`' ad-hoc constants (`wallet:credit`, `compliance:override`, …) are replaced by
+`TikiModule` × `PermissionAction` (`Read`/`Write`, write implying read). `[RequiresPermission]`
+now takes the pair: `[RequiresPermission(TikiModule.Tenants, PermissionAction.Write)]`.
+
+Operations needing a third level of authority — approving a payout, freezing a wallet — are
+deliberately *not* extra actions. They are approval workflows with their own records, because
+"who approved this and why" needs an audit trail a permission bit cannot carry.
+
+### Added — active-tenant selection
+
+`X-Tiki-Select-Tenant` lets a client choose which of its tenants a request acts in;
+`TenantSelection.Resolve` validates it against the session before the gateway stamps the
+trusted `X-Tenant-Id`. Deliberately two header names: letting a client send `X-Tenant-Id`
+directly would mean removing it from the strip list, and every service treats that header as
+proven. A selection the session does not grant is **denied**, never silently substituted.
+
+### Fixed — ambient tenant was silently null (`UseTikiAmbientContext`)
+
+`ServiceContext.TenantId` was set inside the JWT bearer handler. Execution context is
+copy-on-write, so an `AsyncLocal` written inside an awaited call is not visible to the caller
+afterwards — the value was null by the time authorization, and the EF Core tenant query filter,
+read it. It went unnoticed while the session had a single tenant, because the tenant argument
+was ignored. The active tenant is now carried on `HttpContext.Items` and copied onto
+`ServiceContext` by `UseTikiAmbientContext()`, which must be registered directly after
+`UseAuthentication()`.
+
+### Fixed — `RequestLoggingMiddleware` no longer trusts `X-Tenant-Id`
+
+It ran before authentication and copied the header into `ServiceContext.TenantId`, which drives
+the tenant query filter in every service — so any client could send it and read another
+tenant's rows. The header is now logged as `UnverifiedTenantIdHeader` and never used.
+
+### Fixed — the nonce store is now genuinely atomic
+
+`DistributedNonceStore` did a read followed by a write, so two concurrent replays could both
+observe "unseen". Replaced by `RedisNonceStore` using `SET NX EX`, one command.
+
 ## [0.2.0] — 2026-09-07
 
 Security release. Two of the three changes below are **breaking**; both replace a
