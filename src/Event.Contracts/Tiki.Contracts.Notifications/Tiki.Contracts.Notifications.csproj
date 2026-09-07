@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <PackageId>Tiki.Contracts.Notifications</PackageId>
+    <Version>$(TikiVersion)</Version>
+    <Description>Kafka event contracts for the Notification service — the shapes a producer publishes and the notification worker consumes. Records and topic names only; no transport, no rendering.</Description>
+    <PackageTags>tiki;contracts;notifications;kafka;events</PackageTags>
+    <RootNamespace>Tiki.Contracts.Notifications</RootNamespace>
+    <AssemblyName>Tiki.Contracts.Notifications</AssemblyName>
+
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Tiki.Shared only, for BaseEvent. That envelope carries the trace id, source service and
+      subject id every consumer on the platform expects, and deriving from it is what lets the
+      notification worker use the shared consumer base with its retry and dead-letter routing
+      rather than hand-rolling one. Every producer already depends on Tiki.Shared, so this adds
+      nothing to their graph.
+    -->
+    <ProjectReference Include="..\..\Tiki.Shared\Tiki.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

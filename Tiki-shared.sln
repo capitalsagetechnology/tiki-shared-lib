@@ -27,6 +27,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Grpc.Contracts.Tests", "Grp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tiki.Grpc.Contracts.Tests", "tests\Grpc.Contracts.Tests\Tiki.Grpc.Contracts.Tests.csproj", "{D31B63B8-48C6-4997-BE12-26CAC85E30D9}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Event.Contracts", "Event.Contracts", "{FD58DCF4-79FD-097A-841B-7D8C02EDC60C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tiki.Contracts.Notifications", "src\Event.Contracts\Tiki.Contracts.Notifications\Tiki.Contracts.Notifications.csproj", "{525A0236-77C4-4AB2-9606-F10F299360F5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -133,6 +137,18 @@ Global
 		{D31B63B8-48C6-4997-BE12-26CAC85E30D9}.Release|x64.Build.0 = Release|Any CPU
 		{D31B63B8-48C6-4997-BE12-26CAC85E30D9}.Release|x86.ActiveCfg = Release|Any CPU
 		{D31B63B8-48C6-4997-BE12-26CAC85E30D9}.Release|x86.Build.0 = Release|Any CPU
+		{525A0236-77C4-4AB2-9606-F10F299360F5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{525A0236-77C4-4AB2-9606-F10F299360F5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{525A0236-77C4-4AB2-9606-F10F299360F5}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{525A0236-77C4-4AB2-9606-F10F299360F5}.Debug|x64.Build.0 = Debug|Any CPU
+		{525A0236-77C4-4AB2-9606-F10F299360F5}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{525A0236-77C4-4AB2-9606-F10F299360F5}.Debug|x86.Build.0 = Debug|Any CPU
+		{525A0236-77C4-4AB2-9606-F10F299360F5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{525A0236-77C4-4AB2-9606-F10F299360F5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{525A0236-77C4-4AB2-9606-F10F299360F5}.Release|x64.ActiveCfg = Release|Any CPU
+		{525A0236-77C4-4AB2-9606-F10F299360F5}.Release|x64.Build.0 = Release|Any CPU
+		{525A0236-77C4-4AB2-9606-F10F299360F5}.Release|x86.ActiveCfg = Release|Any CPU
+		{525A0236-77C4-4AB2-9606-F10F299360F5}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -148,5 +164,7 @@ Global
 		{BF82C9E3-771E-4B49-AB61-FEF0047EC9F1} = {1CC4710D-B450-7E3C-A51A-597249AEA441}
 		{00E87CFE-F9BC-9073-9D9B-B50525976E09} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{D31B63B8-48C6-4997-BE12-26CAC85E30D9} = {00E87CFE-F9BC-9073-9D9B-B50525976E09}
+		{FD58DCF4-79FD-097A-841B-7D8C02EDC60C} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{525A0236-77C4-4AB2-9606-F10F299360F5} = {FD58DCF4-79FD-097A-841B-7D8C02EDC60C}
 	EndGlobalSection
 EndGlobal
