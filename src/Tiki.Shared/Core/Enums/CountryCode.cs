@@ -20,6 +20,7 @@ public enum CountryCode
     US,
     GB,
     CA,
+    MX,
     RW,
     UG,
     TZ,

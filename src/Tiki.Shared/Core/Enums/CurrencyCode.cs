@@ -20,6 +20,7 @@ public enum CurrencyCode
     GBP,
     EUR,
     CAD,
+    MXN,
     RWF,
     UGX,
     TZS,

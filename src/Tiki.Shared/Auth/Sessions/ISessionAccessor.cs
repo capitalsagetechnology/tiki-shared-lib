@@ -44,10 +44,27 @@ public sealed class HttpContextSessionAccessor(Microsoft.AspNetCore.Http.IHttpCo
     /// <summary>The <c>HttpContext.Items</c> key the JWT event writes the session under.</summary>
     public const string ItemsKey = "tiki.session";
 
+    /// <summary>The <c>HttpContext.Items</c> key the JWT event writes the resolved active tenant under.</summary>
+    /// <remarks>
+    /// Carried on <c>HttpContext.Items</c> rather than only on <see cref="ServiceContext"/>
+    /// because of how <see cref="AsyncLocal{T}"/> actually behaves: a write inside the JWT
+    /// handler happens in a nested execution context, and execution context is copy-on-write,
+    /// so the value is <b>not</b> visible to the middleware pipeline after that await returns.
+    /// <c>HttpContext.Items</c> is a plain shared dictionary and has no such semantics.
+    /// <c>UseTikiAmbientContext()</c> then copies it onto <see cref="ServiceContext"/> from a
+    /// middleware, where a write before <c>await next()</c> does flow to everything downstream.
+    /// </remarks>
+    public const string ActiveTenantItemsKey = "tiki.active-tenant";
+
     public TikiSession? Session =>
         accessor.HttpContext?.Items.TryGetValue(ItemsKey, out var value) == true ? value as TikiSession : null;
 
-    public Guid? ActiveTenantId => ServiceContext.TenantId;
+    public Guid? ActiveTenantId =>
+        accessor.HttpContext?.Items.TryGetValue(ActiveTenantItemsKey, out var value) == true && value is Guid tenantId
+            ? tenantId
+            // Falls back to the ambient value for call paths with no HttpContext at all — a
+            // Kafka consumer handling a message, most obviously.
+            : ServiceContext.TenantId;
 
     public TikiSession Require() =>
         Session ?? throw new Core.Exceptions.UnauthorizedException(

@@ -168,8 +168,15 @@ public static class TikiJwtExtensions
             return;
         }
 
-        // Ambient context comes from the *session*, not the token: the session is current, and
-        // a long-lived token's copy of a user's access may be stale.
+        // Written to HttpContext.Items, not only to ServiceContext. This runs inside the JWT
+        // handler's own execution context, and AsyncLocal writes there do not propagate back
+        // out to the middleware pipeline — so setting ServiceContext here alone leaves the
+        // tenant null by the time authorization evaluates it. UseTikiAmbientContext() copies
+        // these onto ServiceContext from a middleware, where the write does flow downstream.
+        if (selection.TenantId is { } activeTenantId)
+            context.HttpContext.Items[HttpContextSessionAccessor.ActiveTenantItemsKey] = activeTenantId;
+
+        // Still set here as well, for anything reading it before that middleware runs.
         ServiceContext.TenantId = selection.TenantId;
         ServiceContext.UserId = session.UserId;
         ServiceContext.UserType = session.UserType;
