@@ -118,6 +118,71 @@ public class GeneratedContractShapeTests
             names);
     }
 
+    [Fact]
+    public void Compliance_StartKycVerification_rpc_is_present_on_both_the_stub_and_the_base() =>
+        AssertRpcPresentOnBoth(
+            typeof(ComplianceNs.ComplianceService.ComplianceServiceClient),
+            typeof(ComplianceNs.ComplianceService.ComplianceServiceBase),
+            "StartKycVerification");
+
+    [Fact]
+    public void Compliance_GetCustomerKycProfile_rpc_is_present_on_both_the_stub_and_the_base() =>
+        AssertRpcPresentOnBoth(
+            typeof(ComplianceNs.ComplianceService.ComplianceServiceClient),
+            typeof(ComplianceNs.ComplianceService.ComplianceServiceBase),
+            "GetCustomerKycProfile");
+
+    /// <summary>
+    /// The generated C# member names, not just the proto values. protoc strips the enum-name
+    /// prefix and PascalCases what is left, so <c>KYC_PROVIDER_SMARTCOMPLY</c> becomes
+    /// <c>Smartcomply</c> while <c>KYC_PROVIDER_SMART_COMPLY</c> would become
+    /// <c>SmartComply</c> — a rename that breaks every consumer's switch arm, from a proto edit
+    /// that looks like tidying.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ComplianceEnumMembers))]
+    public void Compliance_kyc_enum_generates_the_expected_member_names(Type enumType, string[] expected) =>
+        Assert.Equal(expected, Enum.GetNames(enumType));
+
+    public static TheoryData<Type, string[]> ComplianceEnumMembers => new()
+    {
+        {
+            typeof(ComplianceNs.KycVerificationType),
+            ["Unspecified", "Identity", "Address", "SanctionScreening"]
+        },
+        {
+            typeof(ComplianceNs.KycVerificationStatus),
+            ["Unspecified", "NotStarted", "InProgress", "Approved", "Declined",
+             "ResubmissionRequested", "Expired", "Abandoned"]
+        },
+        {
+            typeof(ComplianceNs.KycVerificationReason),
+            ["Unspecified", "InitialOnboarding", "PeriodicReverification", "TriggeredReview",
+             "DocumentExpired"]
+        },
+        {
+            typeof(ComplianceNs.KycProvider),
+            ["Unspecified", "Veriff", "Kycaid", "Smartcomply"]
+        },
+    };
+
+    /// <summary>
+    /// A oneof, not two optional fields — so "which did you mean?" cannot arise. The generated
+    /// accessor names are part of the contract: consuming code switches on
+    /// <c>IdentifierCase</c>, so renaming the oneof is a source-breaking change even though the
+    /// wire format is unchanged.
+    /// </summary>
+    [Fact]
+    public void Compliance_GetCustomerKycProfileRequest_identifier_is_a_oneof()
+    {
+        var request = typeof(ComplianceNs.GetCustomerKycProfileRequest);
+
+        Assert.NotNull(request.GetProperty("IdentifierCase"));
+        Assert.Equal(
+            new[] { "None", "ProfileId", "SubjectId" },
+            Enum.GetNames(request.GetNestedType("IdentifierOneofCase")!).Order().ToArray());
+    }
+
     private static void AssertGeneratesBoth(Type clientType, Type baseType)
     {
         // global:: — this file's own namespace, Tiki.Grpc.Contracts.Tests, shadows the
