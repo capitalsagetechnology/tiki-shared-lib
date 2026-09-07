@@ -118,9 +118,8 @@ tiki-shared-lib/
 │   ├── pack-grpc-contract.sh            pack one contract package
 │   └── hash-grpc-contract.sh            SHA-256 of a contract's shape, for consumer drift tests
 ├── .github/workflows/
-│   ├── build-test.yml                   build + test + the disallowed-package check
-│   ├── publish-shared.yml               publishes Tiki.Shared
-│   └── publish-grpc-contract.yml        publishes one Tiki.Grpc.Contracts.<Service>
+│   └── ci.yml                           the whole pipeline: build, test, layering
+│                                         check, pack, publish — one job, in order
 ├── Directory.Build.props                net10.0, nullable, analyzers, package metadata
 ├── CHANGELOG.md                         ← you will be editing this
 └── Tiki-shared.sln
@@ -172,7 +171,7 @@ stable channel. Never branch off `main` for a feature.
 
 1. **Write the code**, in the module it belongs to. If it needs a new module, see [§11](#11-adding-a-new-module).
 2. **Write tests alongside it.** Not after, and not in a follow-up PR — a module without tests
-   cannot be released, because `publish-shared.yml` gates the push on `dotnet test`.
+   cannot be released, because the pipeline gates the pack step on `dotnet test`.
 3. **Write the XML doc comments**, including *why* ([§14](#14-code-style-and-documentation)).
 4. **Run the full suite** — not just your module's tests. `Tiki.Shared` is one assembly and the
    modules see each other.
@@ -284,7 +283,7 @@ exactly one place:
 <Version>0.3.0</Version>
 ```
 
-`publish-shared.yml` refuses to run when a release tag disagrees with this value, so it is the
+The pipeline refuses to publish when a release tag disagrees with this value, so it is the
 source of truth, not a copy of one.
 
 ### Which digit moves
@@ -378,37 +377,53 @@ never silently upgraded onto an unreviewed dev build.
 at `0.3.0` when `0.3.0` exists publishes nothing new (`--skip-duplicate`), which is the correct
 and quiet outcome — not an error.
 
-### Workflows
+### One pipeline, one job
 
-**`build-test.yml`** — on every PR and push to `main`/`dev`:
+Everything lives in **`.github/workflows/ci.yml`**, as a single job whose steps run in order:
 
-1. `dotnet restore` / `build` / `test` on the whole solution, Release configuration
-2. Uploads the `.trx` results as an artifact
-3. **The disallowed-package check** — greps `project.assets.json` for a concrete EF Core
-   provider, a vendor tracer, or a messaging framework, and fails the build on a hit
-   ([§13](#13-dependency-rules--what-ci-will-reject))
+```
+restore -> build -> test -> layering check -> pack -> push -> summary
+```
 
-**`publish-shared.yml`** — resolves the version per the table above, builds, **runs the tests
-again as a gate** (a package that fails its own tests must never reach a feed, where it becomes
-something every service resolves), packs, and pushes to GitHub Packages with `--skip-duplicate`.
+This replaced three separate workflows — `build-test.yml`, `publish-shared.yml` and
+`publish-grpc-contract.yml` — that all triggered on the same push. That was three checkouts,
+three restores and three builds of the same commit, finishing in an order nobody controlled, so
+"the tests passed" and "the package was published" were separate events with no guaranteed
+relationship between them. A publish could complete while the test run for the same commit was
+still going.
 
-It only fires on changes under `src/Tiki.Shared/**`, `Directory.Build.props`, or the workflow
-itself — so a docs-only or contracts-only commit does not burn a dev version number.
+A single job makes the ordering structural rather than a convention. Every step runs on the same
+checkout, and the first failure stops the rest — so nothing is published by a commit whose tests
+have not already passed **in that same run**.
 
-**`publish-grpc-contract.yml`** — tag-only. See [§10](#10-changing-a-grpc-contract-package).
+The steps, and what each is for:
 
----
+1. **Restore / Build / Test** — Release configuration, whole solution. The test step uploads its
+   `.trx` results as an artifact even when it fails.
+2. **Verify no disallowed package references** — the layering check in
+   [§13](#13-dependency-rules--what-ci-will-reject), reading the `project.assets.json` the restore
+   already produced.
+3. **Refuse to publish a tag that is not reachable from `main`** — tags only. No publishing off an
+   unmerged branch.
+4. **Pack** — every package on a branch push; on a tag, only the package the tag names, and only
+   if the tag's version matches that project's `<Version>`.
+5. **Push** — one `dotnet nuget push` of everything packed, with `--skip-duplicate`.
+
+A pull request runs steps 1 and 2 and stops: it publishes nothing.
+
+Runs are serialised per ref (`concurrency`), so two pushes in quick succession cannot race to
+publish. Pull requests still cancel in progress, because there is nothing to serialise there.
 
 ## 9. Releasing `Tiki.Shared`
 
-1. Land every change for the release on `dev` and confirm `build-test.yml` is green.
+1. Land every change for the release on `dev` and confirm the `CI` pipeline is green.
 2. Confirm `<Version>` in `src/Tiki.Shared/Tiki.Shared.csproj` is the version you intend to
    release.
 3. Promote the `## [Unreleased]` section in `CHANGELOG.md` to `## [0.3.0] — YYYY-MM-DD`, and
    leave a fresh empty `## [Unreleased]` above it.
 4. Open a PR from `dev` to `main`. The PR body should be the CHANGELOG section, so the release
    review and the release notes are the same text.
-5. Merge. `publish-shared.yml` publishes the stable version.
+5. Merge. The pipeline publishes the stable version.
 6. Tag it, so the commit is findable from the version forever:
    ```bash
    git checkout main && git pull --ff-only
@@ -574,7 +589,8 @@ Prioritize the things whose failure is *silent*:
 
 ## 13. Dependency rules — what CI will reject
 
-`build-test.yml` greps the restored `project.assets.json` and **fails the build** on any of:
+The pipeline's layering step greps the restored `project.assets.json` and **fails the build**
+on any of:
 
 ```
 Microsoft.EntityFrameworkCore.SqlServer | .Sqlite | .Cosmos | .Relational
