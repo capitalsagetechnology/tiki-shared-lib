@@ -6,9 +6,9 @@ namespace Tiki.Shared.Auth;
 /// Process-local <see cref="INonceStore"/> for single-instance deployments and tests.
 ///
 /// <para>
-/// Correct only while a service runs as one instance: two replicas each keep their own
-/// set, so a request replayed against the other replica is not recognised as a repeat.
-/// <see cref="DistributedNonceStore"/> is the multi-instance answer — this one is what
+/// Correct only while a service runs as one instance: two replicas each keep their own set,
+/// so a request replayed against the other replica is not recognised as a repeat.
+/// <see cref="RedisNonceStore"/> is the multi-instance answer — this one is what
 /// <c>AddTikiServiceAuth</c> falls back to when no Redis is configured, so a service still
 /// gets replay protection rather than silently getting none.
 /// </para>
@@ -30,18 +30,29 @@ public sealed class InMemoryNonceStore : INonceStore, IDisposable
         var key = $"{serviceId}:{nonce}";
         var expiresAt = DateTimeOffset.UtcNow.Add(retention);
 
-        // TryAdd is the atomic test-and-set: only the first caller for a given nonce gets true.
-        var isNew = _seen.TryAdd(key, expiresAt);
+        // AddOrUpdate runs atomically per key, so exactly one of two concurrent callers can
+        // observe the slot as free. Doing this as TryAdd-then-fix-up would reintroduce the
+        // race the interface exists to prevent.
+        var wasNew = false;
+        _seen.AddOrUpdate(
+            key,
+            _ =>
+            {
+                wasNew = true;
+                return expiresAt;
+            },
+            (_, existing) =>
+            {
+                // An entry that aged out but has not been swept yet must not reject a fresh
+                // nonce — vanishingly unlikely at 128 bits, but free to handle correctly.
+                if (existing > DateTimeOffset.UtcNow)
+                    return existing;
 
-        // An entry that has aged out but not yet been swept must not reject a fresh nonce
-        // that happens to collide — vanishingly unlikely with 128 bits, but free to handle.
-        if (!isNew && _seen.TryGetValue(key, out var existing) && existing <= DateTimeOffset.UtcNow)
-        {
-            _seen[key] = expiresAt;
-            isNew = true;
-        }
+                wasNew = true;
+                return expiresAt;
+            });
 
-        return Task.FromResult(isNew);
+        return Task.FromResult(wasNew);
     }
 
     private void Sweep()

@@ -190,3 +190,43 @@ public class HmacServiceRequestSignerTests
         Assert.Equal(unknown.FailureReason, expired.FailureReason);
     }
 }
+
+/// <summary>
+/// The nonce store's one job is an atomic test-and-set. These pin that, because a
+/// read-then-write implementation passes every single-threaded test and still lets two
+/// concurrent replays through.
+/// </summary>
+public class InMemoryNonceStoreTests
+{
+    [Fact]
+    public async Task A_nonce_is_new_exactly_once()
+    {
+        var store = new InMemoryNonceStore();
+
+        Assert.True(await store.TryConsumeAsync("api-gateway", "n1", TimeSpan.FromMinutes(10)));
+        Assert.False(await store.TryConsumeAsync("api-gateway", "n1", TimeSpan.FromMinutes(10)));
+    }
+
+    [Fact]
+    public async Task The_same_nonce_from_two_services_does_not_collide()
+    {
+        var store = new InMemoryNonceStore();
+
+        Assert.True(await store.TryConsumeAsync("api-gateway", "shared", TimeSpan.FromMinutes(10)));
+        Assert.True(await store.TryConsumeAsync("wallet-service", "shared", TimeSpan.FromMinutes(10)));
+    }
+
+    [Fact]
+    public async Task Exactly_one_of_many_concurrent_consumers_wins()
+    {
+        // The race a GET-then-SET implementation loses. Every caller would observe "unseen"
+        // before any of them wrote, and every replay would be accepted.
+        var store = new InMemoryNonceStore();
+
+        var results = await Task.WhenAll(
+            Enumerable.Range(0, 64).Select(_ =>
+                Task.Run(() => store.TryConsumeAsync("api-gateway", "contended", TimeSpan.FromMinutes(10)))));
+
+        Assert.Equal(1, results.Count(won => won));
+    }
+}

@@ -26,6 +26,29 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
+    /// Applies the same JSON conventions to MVC controllers.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="AddTikiCore"/> configures <c>Http.Json.JsonOptions</c>, which minimal APIs
+    /// use. Controllers read a different options type entirely, so without this call a
+    /// service that uses controllers silently serialises in PascalCase with numeric enums
+    /// while its minimal-API endpoints use camelCase and strings. Every service that hit this
+    /// had hand-copied the same ten lines into <c>Program.cs</c>.
+    /// </remarks>
+    public static IServiceCollection AddTikiControllerJson(this IServiceCollection services)
+    {
+        services.Configure<Microsoft.AspNetCore.Mvc.JsonOptions>(json =>
+        {
+            json.JsonSerializerOptions.PropertyNamingPolicy = TikiJson.Options.PropertyNamingPolicy;
+            json.JsonSerializerOptions.DefaultIgnoreCondition = TikiJson.Options.DefaultIgnoreCondition;
+            foreach (var converter in TikiJson.Options.Converters)
+                json.JsonSerializerOptions.Converters.Add(converter);
+        });
+
+        return services;
+    }
+
+    /// <summary>
     /// Wires <see cref="CorrelationIdMiddleware"/>, <see cref="RequestLoggingMiddleware"/>,
     /// and <see cref="ErrorHandlingMiddleware"/> in the correct order: correlation id first
     /// so the trace id is already set before anything logs it; request logging wraps error

@@ -18,6 +18,19 @@ mkdir -p "$FEED"
 
 echo "Packing into $FEED"
 
+# Evict any previously-restored copy of these packages first.
+#
+# NuGet caches a package by id+version and will not look at the feed again once it has one
+# extracted globally. Re-packing the same version number therefore has no effect on a
+# consumer that already restored it — the build silently keeps using the older assembly, and
+# you debug a bug you already fixed. Bumping the version on every local iteration is the
+# alternative, and is worse.
+GLOBAL_PACKAGES="${NUGET_PACKAGES:-$HOME/.nuget/packages}"
+for pkg in tiki.shared tiki.grpc.contracts.compliance tiki.grpc.contracts.identity \
+           tiki.grpc.contracts.integration tiki.grpc.contracts.transaction tiki.grpc.contracts.wallet; do
+  rm -rf "${GLOBAL_PACKAGES:?}/${pkg}"
+done
+
 dotnet pack src/Tiki.Shared/Tiki.Shared.csproj --configuration Release --output "$FEED" --nologo -v q
 
 for proj in src/Grpc.Contracts/*/*.csproj; do

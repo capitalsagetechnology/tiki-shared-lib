@@ -118,7 +118,11 @@ public sealed class RedisSessionStore(
         return live;
     }
 
-    public async Task<int> UpdatePermissionsAsync(Guid userId, IReadOnlyList<string> permissions, CancellationToken ct = default)
+    public async Task<int> UpdateAccessAsync(
+        Guid userId,
+        IReadOnlyList<string> globalPermissions,
+        IReadOnlyDictionary<Guid, TenantGrant> tenantAccess,
+        CancellationToken ct = default)
     {
         var sessions = await GetUserSessionsAsync(userId, ct);
         if (sessions.Count == 0)
@@ -128,7 +132,7 @@ public sealed class RedisSessionStore(
         var writes = sessions
             .Select(session => batch.StringSetAsync(
                 SessionKey(session.SessionId),
-                Serialize(session with { Permissions = permissions }),
+                Serialize(session with { GlobalPermissions = globalPermissions, TenantAccess = tenantAccess }),
                 expiry: null,
                 // KeepTtl: the permission change must not silently extend how long the
                 // session lives. Writing without it resets the key to no expiry at all.
@@ -138,7 +142,9 @@ public sealed class RedisSessionStore(
 
         await Task.WhenAll(writes);
 
-        logger.LogInformation("Refreshed permissions on {Count} live session(s) for user {UserId}.", sessions.Count, userId);
+        logger.LogInformation(
+            "Refreshed access on {Count} live session(s) for user {UserId}: {TenantCount} tenant(s), {GlobalCount} global permission(s).",
+            sessions.Count, userId, tenantAccess.Count, globalPermissions.Count);
         return sessions.Count;
     }
 

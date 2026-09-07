@@ -75,10 +75,14 @@ public sealed class CachingSessionStore(
     public Task<IReadOnlyList<TikiSession>> GetUserSessionsAsync(Guid userId, CancellationToken ct = default) =>
         inner.GetUserSessionsAsync(userId, ct);
 
-    public async Task<int> UpdatePermissionsAsync(Guid userId, IReadOnlyList<string> permissions, CancellationToken ct = default)
+    public async Task<int> UpdateAccessAsync(
+        Guid userId,
+        IReadOnlyList<string> globalPermissions,
+        IReadOnlyDictionary<Guid, TenantGrant> tenantAccess,
+        CancellationToken ct = default)
     {
         var sessions = await inner.GetUserSessionsAsync(userId, ct);
-        var updated = await inner.UpdatePermissionsAsync(userId, permissions, ct);
+        var updated = await inner.UpdateAccessAsync(userId, globalPermissions, tenantAccess, ct);
 
         foreach (var session in sessions)
             cache.Remove(CacheKey(session.SessionId));

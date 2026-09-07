@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Caching.Distributed;
+using StackExchange.Redis;
 
 namespace Tiki.Shared.Auth;
 
@@ -18,28 +18,28 @@ public interface INonceStore
 }
 
 /// <summary>
-/// Redis-backed <see cref="INonceStore"/>, the one to use in any deployment with more than
-/// one instance of a service: replicas share the record, so a request replayed against a
+/// Redis-backed <see cref="INonceStore"/> — the one to use wherever a service runs as more
+/// than one instance, since replicas share the record and a request replayed against a
 /// different instance is still caught.
 /// </summary>
 /// <remarks>
-/// Atomicity comes from Redis' <c>SET key value NX EX ttl</c>, exposed here through
-/// <see cref="IDistributedCache"/>. The stored value is a single byte; only the key's
-/// existence carries meaning. Entries expire after <c>retention</c> (twice the clock skew),
-/// past which the timestamp check rejects the request anyway, so nothing accumulates.
+/// Atomicity comes from <c>SET key value NX EX ttl</c>: Redis sets the key only if it does
+/// not already exist, and reports whether it did. One command, so two concurrent replays
+/// cannot both be told the nonce was new — which a <c>GET</c> followed by a <c>SET</c>
+/// would allow, and which is the entire point of the store.
+///
+/// <para>
+/// The value stored is a single byte; only the key's existence carries meaning. Entries
+/// expire after <c>retention</c> (twice the clock skew), past which the timestamp check
+/// rejects the request anyway — so nothing accumulates.
+/// </para>
 /// </remarks>
-public sealed class DistributedNonceStore(IDistributedCache cache) : INonceStore
+public sealed class RedisNonceStore(IConnectionMultiplexer redis) : INonceStore
 {
-    private static readonly byte[] Marker = [1];
-
-    public async Task<bool> TryConsumeAsync(string serviceId, string nonce, TimeSpan retention, CancellationToken ct = default)
-    {
-        var key = $"tiki:nonce:{serviceId}:{nonce}";
-
-        if (await cache.GetAsync(key, ct) is not null)
-            return false;
-
-        await cache.SetAsync(key, Marker, new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = retention }, ct);
-        return true;
-    }
+    public Task<bool> TryConsumeAsync(string serviceId, string nonce, TimeSpan retention, CancellationToken ct = default) =>
+        redis.GetDatabase().StringSetAsync(
+            $"tiki:nonce:{serviceId}:{nonce}",
+            value: 1,
+            expiry: retention,
+            when: When.NotExists);
 }

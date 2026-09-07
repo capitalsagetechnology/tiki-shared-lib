@@ -27,11 +27,7 @@ public static class AuthExtensions
         services.Configure<SessionOptions>(configuration.GetSection(SessionOptions.SectionName));
         services.TryAddTimeProvider();
         services.AddMemoryCache();
-
-        // One multiplexer for the process — StackExchange.Redis is built to be shared, and
-        // creating one per scope is the classic way to exhaust connections under load.
-        services.AddSingleton<IConnectionMultiplexer>(_ =>
-            ConnectionMultiplexer.Connect(redisConnectionString));
+        services.TryAddRedis(redisConnectionString);
 
         services.AddSingleton<RedisSessionStore>();
         services.AddSingleton<ISessionStore>(sp => new CachingSessionStore(
@@ -62,12 +58,13 @@ public static class AuthExtensions
 
         services.TryAddTimeProvider();
 
-        var hasRedis = !string.IsNullOrWhiteSpace(
-            configuration["Tiki:Caching:RedisConnectionString"] ?? configuration.GetConnectionString("Redis"));
+        var redisConnectionString =
+            configuration["Tiki:Caching:RedisConnectionString"] ?? configuration.GetConnectionString("Redis");
 
-        if (hasRedis)
+        if (!string.IsNullOrWhiteSpace(redisConnectionString))
         {
-            services.AddSingleton<INonceStore, DistributedNonceStore>();
+            services.TryAddRedis(redisConnectionString);
+            services.AddSingleton<INonceStore, RedisNonceStore>();
         }
         else
         {
@@ -106,5 +103,22 @@ public static class AuthExtensions
     {
         if (services.All(d => d.ServiceType != typeof(TimeProvider)))
             services.AddSingleton(TimeProvider.System);
+    }
+
+    /// <summary>
+    /// Registers one <see cref="IConnectionMultiplexer"/> for the process, once.
+    /// </summary>
+    /// <remarks>
+    /// Guarded because <c>AddTikiSessions</c> and <c>AddTikiServiceAuth</c> both need Redis
+    /// and most services call both. StackExchange.Redis is designed to be shared — a
+    /// multiplexer per registration would open a second connection pool for no benefit, and
+    /// per-scope would exhaust connections under load.
+    /// </remarks>
+    private static void TryAddRedis(this IServiceCollection services, string connectionString)
+    {
+        if (services.Any(d => d.ServiceType == typeof(IConnectionMultiplexer)))
+            return;
+
+        services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(connectionString));
     }
 }
