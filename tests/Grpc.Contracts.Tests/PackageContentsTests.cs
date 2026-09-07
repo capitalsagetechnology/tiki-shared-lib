@@ -72,7 +72,13 @@ public sealed class PackageContentsTests : IAsyncLifetime
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToArray();
 
-        Assert.Equal(["bitso.proto", "flutterwave.proto", "juno.proto", "kycaid.proto", "smartcomply.proto", "veriff.proto", "volume.proto"], protoEntries);
+        var expectedProtoNames = Directory
+            .GetFiles(Path.Combine(RepoPaths.ContractProjectDir("Integration"), "Protos"), "*.proto")
+            .Select(Path.GetFileName)
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Equal(expectedProtoNames, protoEntries);
     }
 
     [Theory]
@@ -122,8 +128,12 @@ public sealed class PackageContentsTests : IAsyncLifetime
     private static IReadOnlyList<string> PackedProtoFileNames(string service) => service switch
     {
         // Integration is one owning package with one proto per provider, not one
-        // catch-all integration.proto.
-        "Integration" => ["veriff", "volume", "smartcomply", "flutterwave", "kycaid", "bitso", "juno"],
+        // catch-all integration.proto — discover the current set from source rather
+        // than hardcoding it, since new provider protos land here often.
+        "Integration" => Directory
+            .GetFiles(Path.Combine(RepoPaths.ContractProjectDir("Integration"), "Protos"), "*.proto")
+            .Select(f => Path.GetFileNameWithoutExtension(f)!)
+            .ToArray(),
         _ => [service.ToLowerInvariant()],
     };
 
