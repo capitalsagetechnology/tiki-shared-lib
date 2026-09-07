@@ -57,6 +57,20 @@ public sealed class ErrorHandlingMiddleware(RequestDelegate next, ILogger<ErrorH
             Status = StatusCodes.Status409Conflict,
             Type = $"tiki-error:{conflict.Code}",
         },
+        UnauthorizedException unauthorized => new ProblemDetails
+        {
+            Title = "Unauthorized",
+            Detail = unauthorized.Message,
+            Status = StatusCodes.Status401Unauthorized,
+            Type = $"tiki-error:{unauthorized.Code}",
+        },
+        ForbiddenException forbidden => new ProblemDetails
+        {
+            Title = "Forbidden",
+            Detail = forbidden.Message,
+            Status = StatusCodes.Status403Forbidden,
+            Type = $"tiki-error:{forbidden.Code}",
+        },
         TikiException tiki => new ProblemDetails
         {
             Title = "Request could not be completed.",

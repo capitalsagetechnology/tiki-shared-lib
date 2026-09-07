@@ -60,7 +60,15 @@ message CreateSessionDocument {
 }
 
 message CreateSessionAddress {
+  // Either a single pre-formatted line, or the components below — Veriff accepts both, and a
+  // caller that has structured address data should not have to flatten it and hope the
+  // provider re-parses it the same way.
   string full_address = 1;
+
+  string street = 2;
+  string city = 3;
+  string postcode = 4;
+  string state = 5;
 }
 
 message CreateSessionProofOfAddress {

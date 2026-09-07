@@ -6,7 +6,7 @@ namespace Tiki.Shared.Auth;
 /// Kafka consumer handling a message — without either value being passed as a parameter.
 /// Resolved through a claims → header → thread-local fallback chain by
 /// <see cref="Core.Middleware.CorrelationIdMiddleware"/> and
-/// <see cref="ServiceTokenValidationMiddleware"/> at the edge of the request.
+/// <see cref="ServiceRequestAuthenticationMiddleware"/> at the edge of the request.
 /// </summary>
 public static class ServiceContext
 {
@@ -14,6 +14,8 @@ public static class ServiceContext
     private static readonly AsyncLocal<string?> CallingServiceLocal = new();
     private static readonly AsyncLocal<Guid?> TenantIdLocal = new();
     private static readonly AsyncLocal<Guid?> SessionIdLocal = new();
+    private static readonly AsyncLocal<Guid?> UserIdLocal = new();
+    private static readonly AsyncLocal<string?> UserTypeLocal = new();
 
     /// <summary>The trace id for the current logical call chain. Never null once set at the request edge.</summary>
     public static string TraceId
@@ -56,6 +58,25 @@ public static class ServiceContext
     {
         get => SessionIdLocal.Value;
         set => SessionIdLocal.Value = value;
+    }
+
+    /// <summary>
+    /// The authenticated end user behind the current request, if any. Set at the edge from
+    /// the validated JWT, and carried across service hops in the
+    /// <c>X-User-Id</c> header — which is trustworthy only because the HMAC signature on
+    /// that hop covers it. Null for an unauthenticated or purely machine-to-machine call.
+    /// </summary>
+    public static Guid? UserId
+    {
+        get => UserIdLocal.Value;
+        set => UserIdLocal.Value = value;
+    }
+
+    /// <summary><c>Customer</c>, <c>BusinessOwner</c> or <c>TeamMember</c> — the actor type behind <see cref="UserId"/>.</summary>
+    public static string? UserType
+    {
+        get => UserTypeLocal.Value;
+        set => UserTypeLocal.Value = value;
     }
 
     /// <summary>

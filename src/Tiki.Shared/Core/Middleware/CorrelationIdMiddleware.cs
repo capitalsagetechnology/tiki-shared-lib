@@ -21,8 +21,12 @@ public sealed class CorrelationIdMiddleware(RequestDelegate next)
             ?? context.Request.Headers[HeaderName].FirstOrDefault()
             ?? Guid.NewGuid().ToString("n");
 
-        var callingService = context.Request.Headers[ServiceTokenValidationMiddleware.CallingServiceHeaderName]
-            .FirstOrDefault();
+        // Advisory only at this point in the pipeline: the signature that makes this header
+        // trustworthy has not been checked yet (that is
+        // ServiceRequestAuthenticationMiddleware, further down). It is used for log
+        // correlation, never for an authorization decision — the verified value overwrites
+        // this one once the request is authenticated.
+        var callingService = context.Request.Headers[Gateway.TikiHeaderNames.ServiceId].FirstOrDefault();
 
         using (ServiceContext.BeginScope(traceId, callingService))
         {

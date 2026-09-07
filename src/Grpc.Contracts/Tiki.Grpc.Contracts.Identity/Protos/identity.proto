@@ -4,11 +4,24 @@ option csharp_namespace = "Tiki.Grpc.Contracts.Identity";
 
 package tiki.grpc.contracts.identity;
 
+// Owning service: Identity. Every caller compiles against this package; nobody reaches into
+// Identity's database. Tenant lookups dominate the traffic here — Wallet needs a tenant's
+// wallet policy before it can provision, Compliance needs its country before it can pick a
+// KYC provider — so those RPCs are shaped to answer in one round trip.
 service IdentityService {
   rpc Ping (PingRequest) returns (PingResponse);
 
+  // --- Tenant ---
   rpc GetTenantById (GetTenantByIdRequest) returns (TenantDetails);
+  rpc GetTenantByCountry (GetTenantByCountryRequest) returns (TenantDetails);
+  rpc ListTenants (ListTenantsRequest) returns (ListTenantsResponse);
 
+  // Answers "should this user get a wallet, and in what currency?" on its own. Wallet
+  // would otherwise fetch the whole tenant and re-derive the rule, and the two copies of
+  // that rule would drift.
+  rpc GetTenantWalletPolicy (GetTenantWalletPolicyRequest) returns (TenantWalletPolicy);
+
+  // --- Business owner profile ---
   rpc GetBusinessOwnerProfile (GetBusinessOwnerProfileRequest) returns (BusinessOwnerProfileDetails);
   rpc UpdateBusinessOwnerProfile (UpdateBusinessOwnerProfileRequest) returns (BusinessOwnerProfileDetails);
 }
@@ -24,6 +37,43 @@ message PingResponse {
 
 message GetTenantByIdRequest {
   string tenant_id = 1;
+}
+
+message GetTenantByCountryRequest {
+  // ISO 3166-1 alpha-2, e.g. "NG". A country has at most one tenant, so this identifies
+  // exactly one — which is what makes it usable as the tenant resolver at signup.
+  string country_iso2 = 1;
+}
+
+message ListTenantsRequest {
+  int32 page_num = 1;
+  int32 page_size = 2;
+  // When set, returns only tenants that are / are not active.
+  optional bool is_active = 3;
+  // When set, returns only tenants that can / cannot hold wallets.
+  optional bool can_hold_wallet = 4;
+}
+
+message ListTenantsResponse {
+  repeated TenantDetails items = 1;
+  int64 total_count = 2;
+  int32 page_num = 3;
+  int32 page_size = 4;
+}
+
+message GetTenantWalletPolicyRequest {
+  string tenant_id = 1;
+}
+
+// The answer to "provision a wallet for this user, or not?" — and if so, in what currency.
+message TenantWalletPolicy {
+  string tenant_id = 1;
+  bool can_hold_wallet = 2;
+  // ISO 4217, e.g. "NGN". Empty exactly when can_hold_wallet is false; Identity guarantees
+  // a wallet-holding tenant always has one, so a caller never has to invent a fallback.
+  string default_currency = 3;
+  // Currencies a user in this tenant may additionally hold beyond the default.
+  repeated string supported_currencies = 4;
 }
 
 message CountryDetails {
@@ -42,8 +92,26 @@ message TenantDetails {
   string id = 1;
   string country_id = 2;
   string name = 3;
-  repeated string default_currencies = 4;
-  CountryDetails country = 5;
+  CountryDetails country = 4;
+
+  // One tenant per country, so this is a stable, human-usable key — "NG" identifies the
+  // Nigerian tenant without a lookup table.
+  string country_iso2 = 5;
+
+  // Whether users onboarded into this tenant get wallets at all. A tenant may exist purely
+  // to onboard and verify users in a market Tiki does not yet hold funds in.
+  bool can_hold_wallet = 6;
+
+  // ISO 4217. Set exactly when can_hold_wallet is true — the currency a new user's wallet
+  // is created in after successful onboarding.
+  string default_currency = 7;
+
+  // Additional currencies a wallet in this tenant may hold. Never includes default_currency.
+  repeated string supported_currencies = 8;
+
+  bool is_active = 9;
+  string created_at = 10;
+  string updated_at = 11;
 }
 
 // --- Business Owner Profile ---

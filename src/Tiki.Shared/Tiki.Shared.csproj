@@ -12,7 +12,7 @@
     <PackageId>Tiki.Shared</PackageId>
     <!-- Source of truth for release version — publish-shared.yml refuses to run unless a
          shared-v*.*.* tag's version matches this exactly. -->
-    <Version>0.1.0</Version>
+    <Version>0.3.0</Version>
     <Description>Cross-cutting infrastructure shared by every Tiki microservice: caching, messaging (Kafka/Redpanda), telemetry (OpenTelemetry), gRPC service-token auth, Querydsl, Result&lt;T&gt;, and health checks. No domain logic, no EF Core, no messaging framework.</Description>
     <PackageTags>tiki;shared;infrastructure;kafka;redpanda;grpc;opentelemetry;querydsl</PackageTags>
     <RootNamespace>Tiki.Shared</RootNamespace>
@@ -56,7 +56,9 @@
     <PackageReference Include="Grpc.Core.Api" Version="2.83.0" />
     <PackageReference Include="Grpc.Net.ClientFactory" Version="2.83.0" />
 
-    <!-- Auth (JWKS validation for the real OAuth2 provider this interim HMAC one gets swapped for) -->
+    <!-- Auth. JwtBearer is a package, not part of the Microsoft.AspNetCore.App shared
+         framework, so a FrameworkReference alone does not bring it in. -->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.22.0" />
 
     <!-- HealthChecks (hand-rolled against the driver directly — no extra health-check framework) -->

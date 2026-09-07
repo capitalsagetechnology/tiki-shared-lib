@@ -58,13 +58,20 @@ public class RequestLoggingMiddlewareTests
     }
 
     [Fact]
-    public async Task Sets_TenantId_from_the_X_Tenant_Id_header()
+    public async Task Never_sets_TenantId_from_the_X_Tenant_Id_header()
     {
-        // Observed from inside `next` — the same place downstream middleware/handlers would
-        // read it. AsyncLocal changes made inside an awaited call are visible to code
-        // nested further inside that same call, not to the caller after it returns; that
-        // is exactly the scoping this middleware relies on for the rest of the pipeline.
-        var tenantId = Guid.NewGuid();
+        // Regression test for a cross-tenant data-access hole.
+        //
+        // This middleware runs before authentication, so anything it reads off the request
+        // came straight from the caller. It used to copy X-Tenant-Id into
+        // ServiceContext.TenantId — which is what drives the EF Core global tenant query
+        // filter in every service. Any client could therefore send the header and read
+        // another tenant's rows.
+        //
+        // Tenant is now established only after it has been proven: from the live session in
+        // AddTikiJwtAuth's token-validated handler, or from a request whose HMAC signature
+        // covers the header. A logging concern must not establish security context.
+        var spoofed = Guid.NewGuid();
         Guid? observedTenantId = null;
         var logger = new CapturingLogger();
         var middleware = new RequestLoggingMiddleware(
@@ -76,11 +83,30 @@ public class RequestLoggingMiddlewareTests
             logger);
 
         var context = new DefaultHttpContext();
-        context.Request.Headers[RequestLoggingMiddleware.TenantHeaderName] = tenantId.ToString();
+        context.Request.Headers[RequestLoggingMiddleware.TenantHeaderName] = spoofed.ToString();
 
         await middleware.InvokeAsync(context);
 
-        Assert.Equal(tenantId, observedTenantId);
+        Assert.Null(observedTenantId);
+    }
+
+    [Fact]
+    public async Task Logs_the_unverified_tenant_header_without_trusting_it()
+    {
+        // Still worth recording — a spoofing attempt should be visible in the logs — but
+        // labelled as unverified, and never fed into an access decision.
+        var spoofed = Guid.NewGuid();
+        var logger = new CapturingLogger();
+        var middleware = new RequestLoggingMiddleware(_ => Task.CompletedTask, logger);
+
+        var context = new DefaultHttpContext();
+        context.Request.Headers[RequestLoggingMiddleware.TenantHeaderName] = spoofed.ToString();
+
+        await middleware.InvokeAsync(context);
+
+        var line = Assert.Single(logger.Messages);
+        Assert.Contains(spoofed.ToString(), line, StringComparison.Ordinal);
+        Assert.Contains("unverifiedTenantHeader", line, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -122,18 +148,24 @@ public class RequestLoggingMiddlewareTests
     }
 
     [Fact]
-    public async Task An_invalid_tenant_header_leaves_TenantId_unset()
+    public async Task A_malformed_tenant_header_leaves_TenantId_unset()
     {
+        Guid? observedTenantId = null;
         var logger = new CapturingLogger();
-        var middleware = new RequestLoggingMiddleware(_ => Task.CompletedTask, logger);
+        var middleware = new RequestLoggingMiddleware(
+            _ =>
+            {
+                observedTenantId = ServiceContext.TenantId;
+                return Task.CompletedTask;
+            },
+            logger);
 
         var context = new DefaultHttpContext();
         context.Request.Headers[RequestLoggingMiddleware.TenantHeaderName] = "not-a-guid";
 
         await middleware.InvokeAsync(context);
 
-        var line = Assert.Single(logger.Messages);
-        Assert.DoesNotContain("not-a-guid", line);
+        Assert.Null(observedTenantId);
     }
 
     [Fact]
