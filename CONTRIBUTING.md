@@ -275,16 +275,21 @@ number, which is worse than a clean failure.
 
 ## 6. Versioning: what kind of change is this?
 
-`Tiki.Shared` follows [Semantic Versioning](https://semver.org/), and the version lives in
-exactly one place:
+`Tiki.Shared` follows [Semantic Versioning](https://semver.org/), and **every package this repo
+publishes shares one version**, which lives in exactly one place:
 
 ```xml
-<!-- src/Tiki.Shared/Tiki.Shared.csproj -->
-<Version>0.3.0</Version>
+<!-- Directory.Build.props -->
+<TikiVersion>0.4.0</TikiVersion>
 ```
 
-The pipeline refuses to publish when a release tag disagrees with this value, so it is the
-source of truth, not a copy of one.
+Every packable csproj reads it (`<Version>$(TikiVersion)</Version>`), and the pipeline stamps all
+six packages with it on the same run. The pipeline refuses to publish when a release tag
+disagrees with this value, so it is the source of truth, not a copy of one.
+
+The contract packages used to version independently. That produced six numbers to track across
+five consuming repos, and consumers pinned combinations that had never existed — see the 0.4.0
+entry in `CHANGELOG.md`. One number, one bump, one line to review.
 
 ### Which digit moves
 
@@ -366,9 +371,10 @@ keep resolving the first build forever while appearing to be up to date.
 
 | Trigger | Version published | Channel | Who gets it |
 |---|---|---|---|
-| Push to `dev` | `0.3.0-dev.<run-number>` | prerelease | Only a consumer that explicitly opts into prereleases |
-| Push to `main` | `0.3.0` | stable | Everyone on `0.3.x` |
-| Tag `shared-v0.3.0` | `0.3.0` | release | Explicit, verified against the csproj |
+| Pull request | nothing | — | Builds and tests only |
+| Push to `dev` | `0.4.0-dev.<run-number>` | prerelease | Only a consumer that explicitly opts into prereleases |
+| Push to `main` | `0.4.0` | stable | Everyone on `0.4.x` |
+| Tag `tiki-v0.4.0` | `0.4.0` | release | Explicit, verified against `<TikiVersion>` |
 
 The dev suffix sorts *below* the stable release of the same number, so a consumer on `0.3.0` is
 never silently upgraded onto an unreviewed dev build.
@@ -417,9 +423,9 @@ publish. Pull requests still cancel in progress, because there is nothing to ser
 ## 9. Releasing `Tiki.Shared`
 
 1. Land every change for the release on `dev` and confirm the `CI` pipeline is green.
-2. Confirm `<Version>` in `src/Tiki.Shared/Tiki.Shared.csproj` is the version you intend to
-   release.
-3. Promote the `## [Unreleased]` section in `CHANGELOG.md` to `## [0.3.0] — YYYY-MM-DD`, and
+2. Confirm `<TikiVersion>` in `Directory.Build.props` is the version you intend to release. It
+   must be higher than anything already published — a version is immutable once pushed.
+3. Promote the `## [Unreleased]` section in `CHANGELOG.md` to `## [0.4.x] — YYYY-MM-DD`, and
    leave a fresh empty `## [Unreleased]` above it.
 4. Open a PR from `dev` to `main`. The PR body should be the CHANGELOG section, so the release
    review and the release notes are the same text.
@@ -427,8 +433,8 @@ publish. Pull requests still cancel in progress, because there is nothing to ser
 6. Tag it, so the commit is findable from the version forever:
    ```bash
    git checkout main && git pull --ff-only
-   git tag shared-v0.3.0
-   git push origin shared-v0.3.0
+   git tag tiki-v0.4.0
+   git push origin tiki-v0.4.0
    ```
    The workflow re-verifies that the tag's version matches `<Version>` and refuses to run if it
    does not — a tag that disagrees with the csproj would publish a package whose contents do not
@@ -457,7 +463,8 @@ the owning team's review.
    `default_currencies` (field 4) was replaced by `default_currency` (field 7) and
    `supported_currencies` (field 8), and `country` moved to field 4 — noted explicitly as
    **Breaking** in the CHANGELOG.
-3. Bump `<Version>` in that project's `.csproj` — independently of `Tiki.Shared`'s version.
+3. Bump `<TikiVersion>` in `Directory.Build.props`. Contract packages no longer carry their own
+   version: everything this repo publishes moves together.
 4. Add a CHANGELOG entry. Contract releases get their own headings (e.g.
    `## [grpc-integration-v0.1.0]`).
 5. Keep the dependency surface minimal: `Google.Protobuf` and `Grpc.Core.Api` only, with
@@ -486,20 +493,19 @@ package — rather than one giant `integration.proto`.
 
 ### Releasing a contract
 
-Tags are `grpc-<service>-v<major>.<minor>.<patch>`, where `<service>` is one of `identity`,
-`wallet`, `transaction`, `compliance`, `integration`:
+There is no per-contract tag any more. Contracts release with everything else, on a push to
+`main` or a `tiki-v<x.y.z>` tag:
 
 ```bash
 git checkout main && git pull --ff-only
-git tag grpc-wallet-v0.3.0
-git push origin grpc-wallet-v0.3.0
+git tag tiki-v0.4.0
+git push origin tiki-v0.4.0
 ```
 
-The workflow refuses to publish unless **all three** hold:
+The pipeline refuses to publish unless **both** hold:
 
 - the tag commit is **reachable from `main`** (no publishing off an unmerged branch)
-- the tag matches the `grpc-<service>-v<x.y.z>` shape with a known service name
-- the tag's version equals `<Version>` in that contract's `.csproj`
+- the tag's version equals `<TikiVersion>` in `Directory.Build.props`
 
 ### Consumer drift detection
 
@@ -695,7 +701,7 @@ name what was wrong with the old one.>
 - [ ] At least two services need this, identically (or: it is a fix to existing shared code)
 
 ### Versioning
-- [ ] `<Version>` in `src/Tiki.Shared/Tiki.Shared.csproj` bumped: `0.x.y` → `0.x.z`
+- [ ] `<TikiVersion>` in `Directory.Build.props` bumped: `0.x.y` → `0.x.z`
 - [ ] Bump matches the change: breaking → major/minor-as-major, additive → minor, fix → patch
 - [ ] No public signature or DI registration name changed in a minor/patch release
 - [ ] Breaking changes have a migration note in CHANGELOG.md with a `diff` block

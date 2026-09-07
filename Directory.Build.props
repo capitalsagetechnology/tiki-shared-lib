@@ -10,6 +10,21 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
 
+    <!--
+      One version for every package this repo publishes — Tiki.Shared and all five gRPC
+      contracts. They used to carry their own numbers (0.3.0, 0.2.0, 0.1.0, 0.2.3, ...) on the
+      theory that each should release on its own cadence. In practice that meant six numbers to
+      keep straight across five consuming repos, and consumers pinned combinations that had
+      never existed: tiki-compliance-api asked for three contract versions that were never
+      published, and tiki-integrations-api pinned Tiki.Shared 0.1.0 — two breaking releases
+      behind what it was compiled against.
+      One number removes the question "which contract version goes with which Tiki.Shared?"
+      entirely, and the pipeline publishes them together, so it is always answerable by looking
+      at one line. A package with no changes republishes as a no-op, via NuGet's skip-duplicate.
+      Chosen to clear every version already published, so nothing collides with an immutable one.
+    -->
+    <TikiVersion>0.4.0</TikiVersion>
+
     <!-- Package metadata shared by every publishable project under src/ -->
     <Authors>Tiki Platform Team</Authors>
     <Company>Tiki</Company>

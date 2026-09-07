@@ -12,7 +12,7 @@
     <PackageId>Tiki.Shared</PackageId>
     <!-- Source of truth for release version — publish-shared.yml refuses to run unless a
          shared-v*.*.* tag's version matches this exactly. -->
-    <Version>0.3.0</Version>
+    <Version>$(TikiVersion)</Version>
     <Description>Cross-cutting infrastructure shared by every Tiki microservice: caching, messaging (Kafka/Redpanda), telemetry (OpenTelemetry), gRPC service-token auth, Querydsl, Result&lt;T&gt;, and health checks. No domain logic, no EF Core, no messaging framework.</Description>
     <PackageTags>tiki;shared;infrastructure;kafka;redpanda;grpc;opentelemetry;querydsl</PackageTags>
     <RootNamespace>Tiki.Shared</RootNamespace>

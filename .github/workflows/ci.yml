@@ -15,15 +15,17 @@ name: CI
 # the same checkout, and the first failure stops the rest. Nothing is published by a commit whose
 # tests have not already passed in this same run.
 #
-#   pull request           ->  build and test only, publishes nothing
-#   push to dev            ->  <Version>-dev.<run>   prerelease, every package
-#   push to main           ->  <Version>             stable, every package
-#   shared-v1.2.3          ->  1.2.3                 Tiki.Shared only, verified against the csproj
-#   grpc-<service>-v1.2.3  ->  1.2.3                 that one contract, verified against the csproj
+#   pull request  ->  build and test only, publishes nothing
+#   push to dev   ->  <TikiVersion>-dev.<run>   prerelease
+#   push to main  ->  <TikiVersion>             stable
+#   tiki-v1.2.3   ->  1.2.3                     explicit release, verified against TikiVersion
 #
-# Every push publishes every package. --skip-duplicate makes an unchanged version a no-op, so
-# there is no need to work out which projects changed — and no way to forget one, which is how
-# tiki-compliance-api came to pin contract versions that had never been published.
+# Every package carries one version — <TikiVersion> in Directory.Build.props — and they publish
+# together. There used to be six numbers and three tag namespaces, which is how tiki-compliance-api
+# came to pin contract versions that had never been published and tiki-integrations-api came to
+# pin a Tiki.Shared two breaking releases behind the one it was compiled against.
+# --skip-duplicate makes a package with no changes a no-op, so there is nothing to work out and
+# nothing to forget.
 
 on:
   pull_request:
@@ -34,8 +36,7 @@ on:
     # pushes, so cutting a release tag on a commit that happened not to touch those paths would
     # silently publish nothing — and the failure looks exactly like a green run.
     tags:
-      - "shared-v*.*.*"
-      - "grpc-*-v*.*.*"
+      - "tiki-v*.*.*"
   workflow_dispatch:
 
 # Runs against one ref queue rather than overlap, so two pushes in quick succession cannot race
@@ -128,75 +129,38 @@ jobs:
           set -euo pipefail
           rm -rf ./artifacts && mkdir -p ./artifacts
 
-          # A tag names exactly one package and pins its version. A branch push publishes them
-          # all, at whatever each csproj declares.
-          TAG_TARGET=""
-          TAG_VERSION=""
-          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            case "${GITHUB_REF_NAME}" in
-              shared-v*)
-                TAG_TARGET="Tiki.Shared"
-                TAG_VERSION="${GITHUB_REF_NAME#shared-v}"
-                ;;
-              grpc-*-v*)
-                service="${GITHUB_REF_NAME#grpc-}"
-                service="${service%%-v*}"
-                case "$service" in
-                  identity|wallet|transaction|compliance|integration) ;;
-                  *)
-                    echo "::error::Unknown service '$service' in tag ${GITHUB_REF_NAME}. Expected one of: identity, wallet, transaction, compliance, integration."
-                    exit 1
-                    ;;
-                esac
-                TAG_TARGET="Tiki.Grpc.Contracts.$(tr '[:lower:]' '[:upper:]' <<< "${service:0:1}")${service:1}"
-                TAG_VERSION="${GITHUB_REF_NAME##*-v}"
-                ;;
-              *)
-                echo "::error::Unrecognised tag ${GITHUB_REF_NAME}."
-                exit 1
-                ;;
-            esac
-          fi
-
-          packed=0
-          for proj in src/Tiki.Shared/Tiki.Shared.csproj src/Grpc.Contracts/*/*.csproj; do
-            name="$(basename "$proj" .csproj)"
-
-            base="$(grep -oP '(?<=<Version>)[^<]+' "$proj" | head -n1)"
-            if [ -z "$base" ]; then
-              echo "::error::$proj has no <Version> element."
-              exit 1
-            fi
-
-            if [ -n "$TAG_TARGET" ]; then
-              [ "$name" = "$TAG_TARGET" ] || continue
-              # A tag that disagrees with the csproj would publish a package whose contents do
-              # not match the version anyone reading the repo would expect.
-              if [ "$TAG_VERSION" != "$base" ]; then
-                echo "::error::Tag version ($TAG_VERSION) does not match <Version> in $proj ($base)."
-                exit 1
-              fi
-              version="$base"
-            elif [ "${GITHUB_REF_NAME}" = "main" ]; then
-              version="$base"
-            else
-              # Monotonic, and sorts below the stable release of the same number — so a consumer
-              # on 0.3.0 is never silently upgraded onto an unreviewed dev build.
-              version="${base}-dev.${GITHUB_RUN_NUMBER}"
-            fi
-
-            echo "Packing $name $version"
-            dotnet pack "$proj" --no-build --configuration Release \
-              -p:PackageVersion="$version" --output ./artifacts
-            packed=$((packed + 1))
-          done
-
-          if [ "$packed" -eq 0 ]; then
-            echo "::error::Nothing was packed. A tag matched no project — check ${GITHUB_REF_NAME}."
+          # One number for every package, from one place.
+          BASE="$(grep -oP '(?<=<TikiVersion>)[^<]+' Directory.Build.props | head -n1)"
+          if [ -z "$BASE" ]; then
+            echo "::error::Directory.Build.props has no <TikiVersion> element."
             exit 1
           fi
 
-          echo "packed=$packed" >> "$GITHUB_OUTPUT"
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG_VERSION="${GITHUB_REF_NAME#tiki-v}"
+            # A tag that disagrees with the property would publish packages whose contents do not
+            # match the version anyone reading the repo would expect.
+            if [ "$TAG_VERSION" != "$BASE" ]; then
+              echo "::error::Tag version ($TAG_VERSION) does not match <TikiVersion> ($BASE)."
+              exit 1
+            fi
+            VERSION="$BASE"
+          elif [ "${GITHUB_REF_NAME}" = "main" ]; then
+            VERSION="$BASE"
+          else
+            # Monotonic, and sorts below the stable release of the same number — so a consumer on
+            # 0.4.0 is never silently upgraded onto an unreviewed dev build.
+            VERSION="${BASE}-dev.${GITHUB_RUN_NUMBER}"
+          fi
+
+          echo "Publishing everything as $VERSION"
+          for proj in src/Tiki.Shared/Tiki.Shared.csproj src/Grpc.Contracts/*/*.csproj; do
+            dotnet pack "$proj" --no-build --configuration Release \
+              -p:PackageVersion="$VERSION" --output ./artifacts
+          done
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "packed=$(ls -1 ./artifacts/*.nupkg | wc -l | tr -d ' ')" >> "$GITHUB_OUTPUT"
 
       - name: Push to GitHub Packages
         if: github.event_name != 'pull_request'
@@ -215,7 +179,7 @@ jobs:
               echo
               echo "A pull request publishes nothing."
             else
-              echo "### Published ${{ steps.pack.outputs.packed }} package(s)"
+              echo "### Published ${{ steps.pack.outputs.packed }} package(s) at \`${{ steps.pack.outputs.version }}\`"
               echo
               ls -1 ./artifacts/*.nupkg 2>/dev/null | sed 's|.*/|- `|;s|\.nupkg$|`|' || echo "_Nothing was packed._"
             fi

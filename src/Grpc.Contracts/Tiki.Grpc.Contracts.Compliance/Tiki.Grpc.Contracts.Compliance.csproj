@@ -3,7 +3,7 @@
   <PropertyGroup>
     <IsPackable>true</IsPackable>
     <PackageId>Tiki.Grpc.Contracts.Compliance</PackageId>
-    <Version>0.2.0</Version>
+    <Version>$(TikiVersion)</Version>
     <Description>gRPC contract for Compliance Service — .proto-derived client stub and service base class. Compliance's own implementation derives from the base class; every caller consumes the stub.</Description>
     <PackageTags>tiki;grpc;contracts;compliance</PackageTags>
     <RootNamespace>Tiki.Grpc.Contracts.Compliance</RootNamespace>
