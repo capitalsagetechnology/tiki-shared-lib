@@ -154,7 +154,10 @@ jobs:
           fi
 
           echo "Publishing everything as $VERSION"
-          for proj in src/Tiki.Shared/Tiki.Shared.csproj src/Grpc.Contracts/*/*.csproj; do
+          # Every packable project, found rather than listed. A glob that names each directory
+          # is one someone forgets to extend — Tiki.Contracts.Notifications was added under
+          # src/Event.Contracts/ and would have been silently skipped by a Grpc.Contracts-only list.
+          for proj in src/Tiki.Shared/Tiki.Shared.csproj src/*.Contracts/*/*.csproj; do
             dotnet pack "$proj" --no-build --configuration Release \
               -p:PackageVersion="$VERSION" --output ./artifacts
           done

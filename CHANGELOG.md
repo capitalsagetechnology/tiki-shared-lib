@@ -5,6 +5,28 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
+## [0.6.0] — 2026-09-07
+
+### Added — `Tiki.Contracts.Notifications`
+
+The Kafka event contracts for the new Notification service, so a producer and the consumer cannot
+drift: `EmailRequested`, `SmsRequested`, the topic names, the template catalogue and the model
+keys the templates read.
+
+`EmailRequested.ClientBaseUrl` lets a caller say which client an action link belongs to — the
+backoffice today, a customer or partner app later — without the Notification service being
+redeployed per client. The Notification service validates it against a configured allow-list and
+refuses anything unlisted, so the caller picks the destination but not the set of possible ones.
+
+Events derive from `BaseEvent`, so a delivered email carries the trace id of the request that
+asked for it.
+
+### Changed — CI packs every contracts folder
+
+The publish step globbed `src/Grpc.Contracts/*/*.csproj`, which would have silently skipped the
+new package under `src/Event.Contracts/`. It now globs `src/*.Contracts/*/*.csproj` — a list
+someone has to remember to extend is a list that eventually is not extended.
+
 ## [0.5.0] — 2026-09-07
 
 ### Changed — the health endpoints answer JSON, and `/health/ready` names the dependency that failed
