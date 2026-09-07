@@ -23,7 +23,7 @@
       at one line. A package with no changes republishes as a no-op, via NuGet's skip-duplicate.
       Chosen to clear every version already published, so nothing collides with an immutable one.
     -->
-    <TikiVersion>0.5.0</TikiVersion>
+    <TikiVersion>0.6.0</TikiVersion>
 
     <!-- Package metadata shared by every publishable project under src/ -->
     <Authors>Tiki Platform Team</Authors>
