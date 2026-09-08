@@ -5,6 +5,24 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
+## [0.7.1] — 2026-09-08
+
+### Fixed — a service could not start, or stay alive, while Redis was unreachable
+
+`AddTikiServiceAuth` and `AddTikiSessions` created the Redis multiplexer with StackExchange's
+default `abortConnect=true`, so `Connect()` threw whenever Redis was down. Because that is a DI
+factory, the throw repeated on every resolution — ten seconds per request, on every endpoint
+that reached it. And every endpoint did: the service-authentication middleware resolved the
+request verifier (and through it the nonce store, and through that Redis) for every request,
+including `/health/live`. A service whose only problem was that Redis started after it answered
+500 to its liveness probe until the orchestrator gave up and restarted it — which did not help.
+
+Two changes. The multiplexer is now created with `AbortOnConnectFail=false` and a bounded
+connect timeout: created once, reconnects in the background, and an operation attempted while
+Redis is down fails fast. And the middleware resolves the verifier only for a request that
+actually carries a signature or reaches an endpoint that requires one. Liveness is about the
+process again; readiness is what reports the dependency.
+
 ## [0.7.0] — 2026-09-07
 
 ### Changed — authorization denies by default
