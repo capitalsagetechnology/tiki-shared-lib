@@ -16,7 +16,7 @@ public sealed class ServiceAuthInterceptor(IServiceRequestVerifier verifier) : I
     public override async Task<TResponse> UnaryServerHandler<TRequest, TResponse>(
         TRequest request, ServerCallContext context, UnaryServerMethod<TRequest, TResponse> continuation)
     {
-        await AuthenticateAsync(context);
+        (await AuthenticateAsync(context)).Apply();
         return await continuation(request, context);
     }
 
@@ -24,7 +24,7 @@ public sealed class ServiceAuthInterceptor(IServiceRequestVerifier verifier) : I
         TRequest request, IServerStreamWriter<TResponse> responseStream, ServerCallContext context,
         ServerStreamingServerMethod<TRequest, TResponse> continuation)
     {
-        await AuthenticateAsync(context);
+        (await AuthenticateAsync(context)).Apply();
         await continuation(request, responseStream, context);
     }
 
@@ -32,7 +32,7 @@ public sealed class ServiceAuthInterceptor(IServiceRequestVerifier verifier) : I
         IAsyncStreamReader<TRequest> requestStream, ServerCallContext context,
         ClientStreamingServerMethod<TRequest, TResponse> continuation)
     {
-        await AuthenticateAsync(context);
+        (await AuthenticateAsync(context)).Apply();
         return await continuation(requestStream, context);
     }
 
@@ -40,23 +40,58 @@ public sealed class ServiceAuthInterceptor(IServiceRequestVerifier verifier) : I
         IAsyncStreamReader<TRequest> requestStream, IServerStreamWriter<TResponse> responseStream,
         ServerCallContext context, DuplexStreamingServerMethod<TRequest, TResponse> continuation)
     {
-        await AuthenticateAsync(context);
+        (await AuthenticateAsync(context)).Apply();
         await continuation(requestStream, responseStream, context);
     }
 
-    private async Task AuthenticateAsync(ServerCallContext context)
+    /// <summary>
+    /// Verifies the call and returns the identity it carries, WITHOUT writing it to
+    /// <see cref="ServiceContext"/>.
+    /// </summary>
+    /// <remarks>
+    /// The write is the caller's job, and that is not a style preference. Execution context is
+    /// copy-on-write, so an <c>AsyncLocal</c> set inside an awaited method is invisible to the
+    /// caller once that method returns — the same behaviour <see cref="AmbientContextMiddleware"/>
+    /// exists to work around on the JWT path. Assigning here left every mesh gRPC handler running
+    /// with a null tenant, which the EF Core global tenant filter then reads as "no tenant": the
+    /// handler saw none of its own tenant's rows and wrote rows belonging to nobody. Returning the
+    /// values and letting the handler method assign them before it awaits the continuation puts
+    /// the write in a context the handler is downstream of, where it is visible.
+    /// </remarks>
+    private async Task<MeshIdentity> AuthenticateAsync(ServerCallContext context)
     {
         var result = await VerifyAsync(context.RequestHeaders, context.Method, verifier, context.CancellationToken);
         if (!result.IsValid)
             throw new RpcException(new Status(StatusCode.Unauthenticated, result.FailureReason ?? "Unauthorized."));
 
-        ServiceContext.CallingService = result.CallingService;
+        // Only read after the signature verifies — before that, these are attacker-controlled.
+        return new MeshIdentity(
+            result.CallingService,
+            ParseGuid(context.RequestHeaders.GetValue(TikiHeaderNames.TenantId)),
+            ParseGuid(context.RequestHeaders.GetValue(TikiHeaderNames.UserId)));
+    }
 
-        // Only after the signature verifies — before that, these are attacker-controlled.
-        if (Guid.TryParse(context.RequestHeaders.GetValue(TikiHeaderNames.TenantId), out var tenantId))
-            ServiceContext.TenantId = tenantId;
-        if (Guid.TryParse(context.RequestHeaders.GetValue(TikiHeaderNames.UserId), out var userId))
-            ServiceContext.UserId = userId;
+    private static Guid? ParseGuid(string? value) =>
+        Guid.TryParse(value, out var parsed) ? parsed : null;
+
+    /// <summary>The verified identity of one inbound mesh call, ready to be made ambient.</summary>
+    private readonly record struct MeshIdentity(string? CallingService, Guid? TenantId, Guid? UserId)
+    {
+        /// <summary>
+        /// Called from the interceptor's own handler method, so the write flows to the gRPC
+        /// handler downstream of it. A null never overwrites a value already established
+        /// upstream — an unsigned header is an absence, not a correction.
+        /// </summary>
+        public void Apply()
+        {
+            ServiceContext.CallingService = CallingService;
+
+            if (TenantId is not null)
+                ServiceContext.TenantId = TenantId;
+
+            if (UserId is not null)
+                ServiceContext.UserId = UserId;
+        }
     }
 
     /// <summary>Verification against bare <see cref="Metadata"/>, so it is unit-testable without a server.</summary>

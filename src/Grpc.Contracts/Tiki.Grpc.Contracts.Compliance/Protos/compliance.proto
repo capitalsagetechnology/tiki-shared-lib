@@ -12,9 +12,14 @@ package tiki.grpc.contracts.compliance;
 // provider that means for the tenant and country in question. KycProvider below reports
 // which one was used — it is a fact about a completed round, not a caller's choice.
 service ComplianceService {
-  // Opens a verification round for a subject and starts the requested tracks. Creates the
-  // subject's profile if this is the first time they have been seen.
-  rpc StartKycVerification (StartKycVerificationRequest) returns (StartKycVerificationResponse);
+  // The post-onboarding hook: Identity calls this once, as soon as a customer finishes
+  // signing up, and Compliance decides for itself what that customer owes.
+  //
+  // The caller does not name the checks. Which ones a market requires is a compliance rule,
+  // and encoding it in Identity would mean shipping Identity to satisfy a regulatory change.
+  // Returns as soon as the round is recorded; the provider calls happen after, so a slow or
+  // unavailable provider cannot fail onboarding.
+  rpc StartOnboardingScreening (StartOnboardingScreeningRequest) returns (StartOnboardingScreeningResponse);
 
   // A subject's whole KYC standing: the three current tracks, when the standing lapses,
   // and every round ever run against them.
@@ -23,40 +28,6 @@ service ComplianceService {
   // The narrow question — "is this subject verified?" — for a caller that needs an answer
   // rather than a profile.
   rpc GetVerificationStatus (GetVerificationStatusRequest) returns (GetVerificationStatusResponse);
-}
-
-// ---------------------------------------------------------------------------------------
-// StartKycVerification
-// ---------------------------------------------------------------------------------------
-
-message StartKycVerificationRequest {
-  // The caller's own id for the subject. Compliance does not mint it and does not resolve
-  // it — it is the key the caller will use to ask about this subject again.
-  string subject_id = 1;
-
-  // ISO 3166-1 alpha-2. Selects the tenant's configured provider for that market, which is
-  // why it is required even when the subject already has a profile.
-  string country_code = 2;
-
-  // Never defaulted to all three: each type opens a billable provider session.
-  repeated KycVerificationType verification_types = 3;
-
-  KycSubject subject = 4;
-
-  // Unset means initial onboarding — the overwhelmingly common first call.
-  KycVerificationReason reason = 5;
-
-  string callback_url = 6;
-}
-
-message StartKycVerificationResponse {
-  string profile_id = 1;
-  string round_id = 2;
-
-  // Which provider actually ran this round, resolved from the tenant and country.
-  KycProvider provider = 3;
-
-  repeated KycVerificationSession sessions = 4;
 }
 
 // The subject details a provider needs to open a session. Provider-neutral by design.
@@ -96,6 +67,42 @@ message KycSubject {
 }
 
 // ---------------------------------------------------------------------------------------
+// StartOnboardingScreening
+// ---------------------------------------------------------------------------------------
+
+message StartOnboardingScreeningRequest {
+  // The caller's own id for the subject, as everywhere else in this contract.
+  string subject_id = 1;
+
+  // ISO 3166-1 alpha-2 of the SUBJECT's own country. Note that the tenant's country is what
+  // selects the checks, and Compliance reads that from Identity rather than trusting a field
+  // here — a caller-supplied tenant country would let one market's rules be requested for
+  // another's customer.
+  string country_code = 2;
+
+  KycSubject subject = 3;
+
+  // Whether the subject holds citizenship of the tenant's country. A non-citizen onboarding
+  // into the UK owes a UKVI share-code check on top of the automated tracks, and nothing
+  // Compliance can see elsewhere reveals citizenship, so it has to be told.
+  bool is_citizen = 4;
+}
+
+message StartOnboardingScreeningResponse {
+  string profile_id = 1;
+  string round_id = 2;
+
+  // The tracks Compliance decided this subject owes and has opened. Returned so the caller
+  // can show the customer what is outstanding without re-deriving the rule.
+  repeated KycVerificationType accepted_tracks = 3;
+
+  // True when a UKVI share code must be submitted and cleared by an analyst before this
+  // subject can be considered verified. Reported here so Identity can route the customer
+  // straight to that step instead of discovering the requirement later.
+  bool ukvi_share_code_required = 4;
+}
+
+// ---------------------------------------------------------------------------------------
 // GetCustomerKycProfile
 // ---------------------------------------------------------------------------------------
 
@@ -107,7 +114,7 @@ message GetCustomerKycProfileRequest {
     // Compliance's own profile id, as a UUID.
     string profile_id = 1;
 
-    // The caller's subject id, as passed to StartKycVerification.
+    // The caller's subject id, as passed to StartOnboardingScreening.
     string subject_id = 2;
   }
 }
@@ -133,9 +140,42 @@ message CustomerKycProfileResponse {
 
   // Newest first.
   repeated KycVerificationRound rounds = 9;
+
+  // The tenant, denormalised by Compliance from Identity so a caller listing profiles does not
+  // need a lookup per row. Empty on a profile last touched before this was recorded.
+  string tenant_name = 10;
+
+  // ISO 3166-1 alpha-2 of the TENANT's country — the market whose rules decided which checks
+  // this customer owes. NOT the same as country_code above, which is the customer's own.
+  string tenant_country_code = 11;
+
+  // Sanctions standing. SANCTION_MATCH_STATUS_POSSIBLE_MATCH is a candidate awaiting an
+  // analyst's decision, not a finding — see the enum.
+  SanctionMatchStatus sanction_match_status = 12;
+
+  // A UKVI share code must be cleared before this customer counts as verified.
+  bool ukvi_share_code_required = 13;
 }
 
-// One verification round: everything started by a single StartKycVerification call.
+// Where a customer stands against sanctions and PEP lists.
+//
+// Separate from KycVerificationStatus because a screening provider returns candidate matches on
+// a name, not a verdict — a common name produces matches constantly. POSSIBLE_MATCH is a lead
+// for a human, and a consumer that treats it as proof locks a customer out of their money on a
+// fuzzy string comparison.
+enum SanctionMatchStatus {
+  SANCTION_MATCH_STATUS_UNSPECIFIED = 0;
+
+  // No screening has returned yet. Distinct from NO_MATCH: nobody has looked.
+  SANCTION_MATCH_STATUS_PENDING_VERIFICATION = 1;
+
+  SANCTION_MATCH_STATUS_NO_MATCH = 2;
+
+  // One or more candidates. Requires a compliance analyst's decision.
+  SANCTION_MATCH_STATUS_POSSIBLE_MATCH = 3;
+}
+
+// One verification round: everything started by a single StartOnboardingScreening call.
 message KycVerificationRound {
   string round_id = 1;
   KycProvider provider = 2;

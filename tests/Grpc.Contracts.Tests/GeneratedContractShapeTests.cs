@@ -118,12 +118,30 @@ public class GeneratedContractShapeTests
             names);
     }
 
+    /// <summary>
+    /// The rpc Identity calls once onboarding completes. It replaced StartKycVerification, which
+    /// made the caller name the verification tracks to run - a policy decision that belongs to
+    /// Compliance, and which Identity had no way to get right for a market it does not model.
+    /// </summary>
     [Fact]
-    public void Compliance_StartKycVerification_rpc_is_present_on_both_the_stub_and_the_base() =>
+    public void Compliance_StartOnboardingScreening_rpc_is_present_on_both_the_stub_and_the_base() =>
         AssertRpcPresentOnBoth(
             typeof(ComplianceNs.ComplianceService.ComplianceServiceClient),
             typeof(ComplianceNs.ComplianceService.ComplianceServiceBase),
-            "StartKycVerification");
+            "StartOnboardingScreening");
+
+    /// <summary>
+    /// StartKycVerification is gone, not deprecated. A stub that still carries it lets a caller
+    /// compile against an rpc the server no longer implements, and find out at runtime.
+    /// </summary>
+    [Fact]
+    public void Compliance_StartKycVerification_rpc_is_gone()
+    {
+        Assert.Null(typeof(ComplianceNs.ComplianceService.ComplianceServiceClient)
+            .GetMethod("StartKycVerification"));
+        Assert.Null(typeof(ComplianceNs.ComplianceService.ComplianceServiceBase)
+            .GetMethod("StartKycVerification"));
+    }
 
     [Fact]
     public void Compliance_GetCustomerKycProfile_rpc_is_present_on_both_the_stub_and_the_base() =>
