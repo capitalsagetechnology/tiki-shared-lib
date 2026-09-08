@@ -45,6 +45,23 @@ public sealed class TieredCache(
         return value;
     }
 
+    public async Task SetAsync<T>(string key, T value, CacheTier tier = CacheTier.L2, TimeSpan? ttl = null, CancellationToken ct = default)
+    {
+        var fullKey = BuildKey(key);
+
+        if (tier == CacheTier.L1)
+        {
+            l1.Set(fullKey, value, ttl ?? _options.DefaultL1Ttl);
+            return;
+        }
+
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(value, TikiJson.Options);
+        await l2.SetAsync(
+            fullKey, bytes,
+            new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = ttl ?? _options.DefaultL2Ttl },
+            ct);
+    }
+
     public async Task InvalidateAsync(string key, CancellationToken ct = default)
     {
         var fullKey = BuildKey(key);

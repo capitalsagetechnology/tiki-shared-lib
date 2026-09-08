@@ -24,6 +24,10 @@ service IdentityService {
   // --- Business owner profile ---
   rpc GetBusinessOwnerProfile (GetBusinessOwnerProfileRequest) returns (BusinessOwnerProfileDetails);
   rpc UpdateBusinessOwnerProfile (UpdateBusinessOwnerProfileRequest) returns (BusinessOwnerProfileDetails);
+
+  // --- Customer ---
+  rpc GetCustomerById (GetCustomerByIdRequest) returns (CustomerDetails);
+  rpc UpdateCustomer (UpdateCustomerRequest) returns (CustomerDetails);
 }
 
 message PingRequest {
@@ -149,4 +153,39 @@ message BusinessOwnerProfileDetails {
   string government_id_url = 10;
   string kyc_status = 11;
   bool profile_completed = 12;
+}
+
+// --- Customer ---
+
+message GetCustomerByIdRequest {
+  string user_id = 1;
+}
+
+// Partial update — only the fields actually set (see the generated per-field `HasXxx`) are
+// applied; a field left unset leaves that property untouched on the entity.
+message UpdateCustomerRequest {
+  string user_id = 1;
+  optional string first_name = 2;
+  optional string last_name = 3;
+  optional string username = 4;
+  // Tiki.Shared.Core.Enums.CitizenshipStatus member name, e.g. "Citizen".
+  optional string citizenship_status = 5;
+  optional string country_id = 6;
+  // Tiki.Shared.Core.Enums.KycStatus member name, e.g. "InReview".
+  optional string kyc_status = 7;
+}
+
+message CustomerDetails {
+  string user_id = 1;
+  string email = 2;
+  bool email_verified = 3;
+  string phone_number = 4;
+  bool phone_number_verified = 5;
+  string first_name = 6;
+  string last_name = 7;
+  string username = 8;
+  string citizenship_status = 9;
+  string kyc_status = 10;
+  bool has_transaction_pin = 11;
+  CountryDetails country = 12;
 }
