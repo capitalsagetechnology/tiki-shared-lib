@@ -21,6 +21,7 @@ public sealed record HealthReportResponse
     public required HealthStatus Status { get; init; }
 
     /// <summary>Which service answered. A body copied into a ticket is otherwise unattributable.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Service { get; init; }
 
     public required DateTimeOffset CheckedAt { get; init; }
@@ -32,6 +33,7 @@ public sealed record HealthReportResponse
     /// One entry per registered check, keyed by name — <c>postgres</c>, <c>redis</c>,
     /// <c>redpanda</c>. Absent on <c>/health/live</c>, which runs no checks at all.
     /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyDictionary<string, HealthCheckEntry>? Checks { get; init; }
 }
 
@@ -45,6 +47,7 @@ public sealed record HealthCheckEntry
     /// The check's own description — <c>"Postgres connectivity check failed."</c>,
     /// <c>"3 broker(s) reachable."</c> Written by the check, so it is safe to publish.
     /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Description { get; init; }
 
     public required double DurationMs { get; init; }
@@ -58,6 +61,7 @@ public sealed record HealthCheckEntry
     /// by anything on the mesh. <c>NpgsqlException</c> tells an operator which layer broke;
     /// the message would tell a reader the topology.
     /// </remarks>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Error { get; init; }
 }
 
