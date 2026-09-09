@@ -5,6 +5,22 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
+## [0.7.4] — 2026-09-09
+
+### Added — `pateno.proto` (Tiki.Grpc.Contracts.Integration)
+
+New provider proto for Pateno (Interac e-Transfer and bill payment, via DC Bank's Client API
+integration surface) - `PatenoService` with five RPCs matching the five endpoints
+tiki-integrations-api's Pateno adapter calls: `CreateEtransferRequestMoney`,
+`SearchIncomingTransfers`, `CreateEtransferTransactionWithCustomer`, `SearchPayee`, and
+`CreateIndividualBillPayment`. Additive only - one new file under
+`Tiki.Grpc.Contracts.Integration/Protos/`, picked up by the existing `Protos/*.proto` wildcard
+with no `.csproj` change. No existing message or RPC changed, so nothing else in this repo's
+published surface moves.
+
+Request/response field names are taken directly from Pateno's own published API reference (the
+Postman collection served from docs.pateno.com) and confirmed against live sandbox calls.
+
 ## [0.7.3] — 2026-09-09
 
 ### Added — `CurrencyLayerService.GetCacheSettings` / `UpdateCacheSettings`
