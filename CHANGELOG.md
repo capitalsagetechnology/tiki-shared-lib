@@ -21,6 +21,35 @@ published surface moves.
 Request/response field names are taken directly from Pateno's own published API reference (the
 Postman collection served from docs.pateno.com) and confirmed against live sandbox calls.
 
+## [0.7.3] — 2026-09-09
+
+### Added — `CurrencyLayerService.GetCacheSettings` / `UpdateCacheSettings`
+
+`Tiki.Grpc.Contracts.Integration`'s `CurrencyLayerService` (FX rates, `currencylayer.proto`) gains
+two RPCs alongside the existing `GetLiveRates`: `GetCacheSettings` reads the rate cache's current
+refresh/eviction cadence, and `UpdateCacheSettings` changes it. Both return the same
+`CacheSettingsReply` (`cache_refresh_minutes`, `cache_eviction_days`), so the cadence is
+runtime-updatable rather than fixed at deploy time. Additive — `GetLiveRates` and its messages are
+unchanged.
+
+## [0.7.1] — 2026-09-08
+
+### Fixed — a service could not start, or stay alive, while Redis was unreachable
+
+`AddTikiServiceAuth` and `AddTikiSessions` created the Redis multiplexer with StackExchange's
+default `abortConnect=true`, so `Connect()` threw whenever Redis was down. Because that is a DI
+factory, the throw repeated on every resolution — ten seconds per request, on every endpoint
+that reached it. And every endpoint did: the service-authentication middleware resolved the
+request verifier (and through it the nonce store, and through that Redis) for every request,
+including `/health/live`. A service whose only problem was that Redis started after it answered
+500 to its liveness probe until the orchestrator gave up and restarted it — which did not help.
+
+Two changes. The multiplexer is now created with `AbortOnConnectFail=false` and a bounded
+connect timeout: created once, reconnects in the background, and an operation attempted while
+Redis is down fails fast. And the middleware resolves the verifier only for a request that
+actually carries a signature or reaches an endpoint that requires one. Liveness is about the
+process again; readiness is what reports the dependency.
+
 ## [0.7.0] — 2026-09-07
 
 ### Changed — authorization denies by default

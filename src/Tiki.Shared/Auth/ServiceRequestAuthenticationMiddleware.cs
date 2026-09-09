@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Tiki.Shared.Core.Attributes;
 using Tiki.Shared.Gateway;
@@ -16,7 +17,7 @@ public sealed class ServiceRequestAuthenticationMiddleware(
     RequestDelegate next,
     ILogger<ServiceRequestAuthenticationMiddleware> logger)
 {
-    public async Task InvokeAsync(HttpContext context, IServiceRequestVerifier verifier)
+    public async Task InvokeAsync(HttpContext context)
     {
         var requirement = context.GetEndpoint()?.Metadata.GetMetadata<RequireServiceTokenAttribute>();
         if (requirement is null)
@@ -24,6 +25,12 @@ public sealed class ServiceRequestAuthenticationMiddleware(
             await next(context);
             return;
         }
+
+        // Resolved here, past the early return, and not as a method parameter. As a parameter
+        // it was resolved for every request — and the verifier reaches the nonce store, which
+        // reaches Redis — so a request that needed no verification at all, /health/live above
+        // all, still paid for a Redis connection and failed when there was none.
+        var verifier = context.RequestServices.GetRequiredService<IServiceRequestVerifier>();
 
         if (!TryReadSignature(context.Request, out var signature))
         {

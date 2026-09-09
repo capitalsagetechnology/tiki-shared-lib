@@ -119,6 +119,27 @@ public static class AuthExtensions
         if (services.Any(d => d.ServiceType == typeof(IConnectionMultiplexer)))
             return;
 
-        services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(connectionString));
+        services.AddSingleton<IConnectionMultiplexer>(_ =>
+        {
+            var options = ConfigurationOptions.Parse(connectionString);
+
+            // Never abort on a failed first connection. The default (abortConnect=true) makes
+            // Connect() throw when Redis is unreachable, and because this is a factory the
+            // throw repeats on every resolution — ten seconds per request, forever, on every
+            // endpoint that touches the multiplexer. Liveness included: /health/live answered
+            // 500 for as long as Redis was down, so the orchestrator restarted a service whose
+            // only problem was a dependency it could have waited for.
+            //
+            // With this off the multiplexer is created once, reconnects in the background, and
+            // an operation attempted while Redis is down fails fast with a clear error. The
+            // readiness probe is what reports the dependency; liveness stays about the process.
+            options.AbortOnConnectFail = false;
+
+            // Bounded, so the one blocking attempt at creation cannot stall startup.
+            options.ConnectTimeout = Math.Min(options.ConnectTimeout, 5_000);
+            options.ConnectRetry = Math.Max(options.ConnectRetry, 3);
+
+            return ConnectionMultiplexer.Connect(options);
+        });
     }
 }
