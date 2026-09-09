@@ -5,6 +5,17 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
+## [0.7.3] — 2026-09-09
+
+### Added — `CurrencyLayerService.GetCacheSettings` / `UpdateCacheSettings`
+
+`Tiki.Grpc.Contracts.Integration`'s `CurrencyLayerService` (FX rates, `currencylayer.proto`) gains
+two RPCs alongside the existing `GetLiveRates`: `GetCacheSettings` reads the rate cache's current
+refresh/eviction cadence, and `UpdateCacheSettings` changes it. Both return the same
+`CacheSettingsReply` (`cache_refresh_minutes`, `cache_eviction_days`), so the cadence is
+runtime-updatable rather than fixed at deploy time. Additive — `GetLiveRates` and its messages are
+unchanged.
+
 ## [0.7.1] — 2026-09-08
 
 ### Fixed — a service could not start, or stay alive, while Redis was unreachable
