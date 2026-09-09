@@ -7,6 +7,10 @@ package tiki.grpc.contracts.integration;
 // CurrencyLayer FX-rates mesh API owned by the Integration service.
 service CurrencyLayerService {
   rpc GetLiveRates (GetLiveRatesRequest) returns (GetLiveRatesReply);
+
+  // The rate cache's refresh/eviction cadence - runtime-updatable rather than fixed at deploy time.
+  rpc GetCacheSettings (GetCacheSettingsRequest) returns (CacheSettingsReply);
+  rpc UpdateCacheSettings (UpdateCacheSettingsRequest) returns (CacheSettingsReply);
 }
 
 message GetLiveRatesRequest {
@@ -22,4 +26,17 @@ message GetLiveRatesReply {
   int64 timestamp = 3;
   string source = 4;
   map<string, double> quotes = 5;
+}
+
+message GetCacheSettingsRequest {
+}
+
+message UpdateCacheSettingsRequest {
+  int32 cache_refresh_minutes = 1;
+  int32 cache_eviction_days = 2;
+}
+
+message CacheSettingsReply {
+  int32 cache_refresh_minutes = 1;
+  int32 cache_eviction_days = 2;
 }
