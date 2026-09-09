@@ -173,6 +173,20 @@ message UpdateCustomerRequest {
   optional string country_id = 6;
   // Tiki.Shared.Core.Enums.KycStatus member name, e.g. "InReview".
   optional string kyc_status = 7;
+  // ISO 8601 date, e.g. "1990-01-01".
+  optional string dob = 8;
+  optional string address = 9;
+  optional string city = 10;
+  optional string state = 11;
+  optional string occupation = 12;
+  optional string referral_code = 13;
+  // Tiki.Shared.Core.Enums.AddressVerificationStatus member name, e.g. "Verified".
+  optional string address_verification_status = 14;
+  // Tiki.Shared.Core.Enums.CustomerStatus member name, e.g. "Active".
+  optional string customer_status = 15;
+  // Tiki.Shared.Core.Enums.SanctionScreeningStatus member name, e.g. "NoMatch".
+  optional string sanction_screening_status = 16;
+  optional string status_update_reason = 17;
 }
 
 message CustomerDetails {
@@ -188,4 +202,15 @@ message CustomerDetails {
   string kyc_status = 10;
   bool has_transaction_pin = 11;
   CountryDetails country = 12;
+  // ISO 8601 date, e.g. "1990-01-01". Empty when unset.
+  string dob = 13;
+  string address = 14;
+  string city = 15;
+  string state = 16;
+  string occupation = 17;
+  string referral_code = 18;
+  string address_verification_status = 19;
+  string customer_status = 20;
+  string sanction_screening_status = 21;
+  string status_update_reason = 22;
 }
