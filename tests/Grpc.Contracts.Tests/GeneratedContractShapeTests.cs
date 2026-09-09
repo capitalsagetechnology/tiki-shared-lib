@@ -97,6 +97,24 @@ public class GeneratedContractShapeTests
             typeof(IntegrationNs.KycaidService.KycaidServiceBase));
 
     [Fact]
+    public void Integration_Pateno_contract_generates_both_client_stub_and_service_base() =>
+        AssertGeneratesBoth(
+            typeof(IntegrationNs.PatenoService.PatenoServiceClient),
+            typeof(IntegrationNs.PatenoService.PatenoServiceBase));
+
+    [Theory]
+    [InlineData("CreateEtransferRequestMoney")]
+    [InlineData("SearchIncomingTransfers")]
+    [InlineData("CreateEtransferTransactionWithCustomer")]
+    [InlineData("SearchPayee")]
+    [InlineData("CreateIndividualBillPayment")]
+    public void Integration_Pateno_rpc_is_present_on_both_the_stub_and_the_base(string rpcName) =>
+        AssertRpcPresentOnBoth(
+            typeof(IntegrationNs.PatenoService.PatenoServiceClient),
+            typeof(IntegrationNs.PatenoService.PatenoServiceBase),
+            rpcName);
+
+    [Fact]
     public void Compliance_GetVerificationStatus_rpc_is_present_on_both_the_stub_and_the_base()
     {
         var clientHasIt = typeof(ComplianceNs.ComplianceService.ComplianceServiceClient)
