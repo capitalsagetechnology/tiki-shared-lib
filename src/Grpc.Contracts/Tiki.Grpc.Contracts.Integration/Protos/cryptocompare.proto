@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+option csharp_namespace = "Tiki.Grpc.Contracts.Integration";
+
+package tiki.grpc.contracts.integration;
+
+// CryptoCompare FX-rates mesh API owned by the Integration service. Read-only: unlike
+// CurrencyLayer, the refresh cadence has no runtime-update RPC - it's fixed via config.
+service CryptoCompareService {
+  rpc GetRates (GetCryptoCompareRatesRequest) returns (GetCryptoCompareRatesReply);
+}
+
+message GetCryptoCompareRatesRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  repeated string sources = 3;
+  repeated string targets = 4;
+}
+
+message CryptoCompareSourceRates {
+  string source = 1;
+  int64 fetched_at_unix_timestamp = 2;
+  map<string, double> rates = 3;
+}
+
+message GetCryptoCompareRatesReply {
+  repeated CryptoCompareSourceRates results = 1;
+}
