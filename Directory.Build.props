@@ -24,7 +24,7 @@
       Chosen to clear every version already published, so nothing collides with an immutable one.
     -->
     
-    <TikiVersion>0.7.7</TikiVersion>
+    <TikiVersion>0.7.8</TikiVersion>
 
     <!-- Package metadata shared by every publishable project under src/ -->
     <Authors>Tiki Platform Team</Authors>
