@@ -12,6 +12,14 @@ package tiki.grpc.contracts.compliance;
 // provider that means for the tenant and country in question. KycProvider below reports
 // which one was used — it is a fact about a completed round, not a caller's choice.
 service ComplianceService {
+  // Identity-only, HMAC authenticated. Tenant comes from signed metadata.
+  // Start is retry-safe by tenant + business_id; returns the original draft without replacing it.
+  rpc StartBusinessKyb (StartBusinessKybRequest) returns (BusinessKybReceipt);
+  rpc UpdateBusinessKybDraft (UpdateBusinessKybDraftRequest) returns (BusinessKybReceipt);
+  rpc UploadBusinessKybDocument (UploadBusinessKybDocumentRequest) returns (BusinessKybReceipt);
+  rpc SubmitBusinessKyb (BusinessKybApplicationRequest) returns (BusinessKybReceipt);
+  // Creates/returns a linked draft from a rejected application. Upload then Submit the NEW id.
+  rpc CreateBusinessKybResubmission (BusinessKybApplicationRequest) returns (BusinessKybReceipt);
   // The post-onboarding hook: Identity calls this once, as soon as a customer finishes
   // signing up, and Compliance decides for itself what that customer owes.
   //
@@ -272,4 +280,103 @@ enum KycProvider {
   KYC_PROVIDER_VERIFF = 1;
   KYC_PROVIDER_KYCAID = 2;
   KYC_PROVIDER_SMARTCOMPLY = 3;
+}
+
+// Identity verifies ownership and tenant membership before every call. applicant_id is the owner UUID.
+message StartBusinessKybRequest {
+  string business_id = 1;
+  string applicant_id = 2;
+  BusinessKybSubmission submission = 3;
+}
+message UpdateBusinessKybDraftRequest {
+  string application_id = 1;
+  string applicant_id = 2;
+  BusinessKybSubmission submission = 3;
+}
+message BusinessKybApplicationRequest {
+  string application_id = 1;
+  string applicant_id = 2;
+}
+message UploadBusinessKybDocumentRequest {
+  string application_id = 1;
+  string applicant_id = 2;
+  // KybDocumentType numeric values documented in the integration guide; unknown/zero refused.
+  int32 document_type = 3;
+  bytes content = 4; // 1 byte to 10 MiB. PDF, JPEG or PNG. Not a URL to fetch.
+  string content_type = 5;
+}
+message BusinessKybReceipt {
+  string application_id = 1;
+  string business_id = 2;
+  string applicant_id = 3;
+  string status = 4;
+  string previous_application_id = 5;
+}
+message BusinessKybSubmission {
+  KybBusinessDetails business = 1;
+  repeated KybDirectorDetails directors = 2;
+  repeated KybBeneficialOwnerDetails beneficial_owners = 3;
+  KybBusinessDeclarations declarations = 4;
+}
+// Dates use YYYY-MM-DD. Ownership percentage is an invariant decimal string, e.g. "25.5".
+message KybBusinessDetails {
+  string company_name = 1;
+  string trading_name = 2;
+  string street_address = 3;
+  string city = 4;
+  string state = 5;
+  string postal_code = 6;
+  string country_code = 7;
+  string formation_country_code = 8;
+  string formation_state = 9;
+  bool is_incorporated = 10;
+  string registration_number = 11;
+  string tax_id = 12;
+  string contact_email = 13;
+  string contact_number = 14;
+  string website_url = 15;
+  string description = 16;
+  string business_purpose = 17;
+  string business_type = 18;
+  string nature_of_business = 19;
+  string applicant_type = 20;
+  string purpose_of_transactions = 21;
+  string trade_volume = 22;
+  string annual_volume = 23;
+  repeated string currencies_needed = 24;
+  repeated string fund_source_countries = 25;
+  repeated string fund_destination_countries = 26;
+  bool any_individual_owns25_percent_or_more = 27;
+  bool owned_by_other_corporate_entity = 28;
+  bool is_publicly_traded = 29;
+  string stock_symbol = 30;
+  bool owned_by_publicly_traded_company = 31;
+  string parent_company_stock_symbol = 32;
+}
+message KybDirectorDetails {
+  string full_name = 1;
+  string first_name = 2;
+  string last_name = 3;
+  string job_title = 4;
+  string occupation = 5;
+  string date_of_birth = 6;
+}
+message KybBeneficialOwnerDetails {
+  string full_name = 1;
+  string nationality = 2;
+  string residential_address = 3;
+  string ownership_percentage = 4;
+  string date_of_birth = 5;
+  string tax_id = 6;
+}
+message KybBusinessDeclarations {
+  bool agree_to_terms_and_conditions = 1;
+  bool authorized_to_bind_client_to_agreement = 2;
+  bool provide_truthful_information = 3;
+  bool consent_to_privacy_notice = 4;
+  string signer_full_name = 5;
+  string signer_date_of_birth = 6;
+  string signer_job_title = 7;
+  string signer_email = 8;
+  string signer_residential_address = 9;
 }
