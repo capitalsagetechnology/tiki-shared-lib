@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
+using StackExchange.Redis;
 using Tiki.Shared.Extensions;
 
 namespace Tiki.Shared.Caching;
@@ -10,6 +11,7 @@ namespace Tiki.Shared.Caching;
 public sealed class TieredCache(
     IMemoryCache l1,
     IDistributedCache l2,
+    IConnectionMultiplexer redis,
     IOptions<TieredCacheOptions> options) : ITieredCache
 {
     private readonly TieredCacheOptions _options = options.Value;
@@ -67,6 +69,49 @@ public sealed class TieredCache(
         var fullKey = BuildKey(key);
         l1.Remove(fullKey);
         await l2.RemoveAsync(fullKey, ct);
+    }
+
+    public Task SetOnceAsync<T>(string key, T value, TimeSpan ttl, CancellationToken ct = default)
+    {
+        var fullKey = BuildKey(key);
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(value, TikiJson.Options);
+
+        // A plain Redis string, written directly — not through IDistributedCache, whose
+        // StackExchangeRedis implementation stores entries as a hash (fields "data"/"absexp"/
+        // "sldexp"). TryConsumeAsync's condition below only evaluates against a string value.
+        return redis.GetDatabase().StringSetAsync(fullKey, bytes, ttl);
+    }
+
+    public async Task<bool> TryConsumeAsync<T>(string key, T expectedValue, CancellationToken ct = default)
+    {
+        var fullKey = BuildKey(key);
+        var expectedBytes = JsonSerializer.SerializeToUtf8Bytes(expectedValue, TikiJson.Options);
+
+        // GETDEL (StringGetDeleteAsync) can't do this: it deletes unconditionally and hands
+        // back whatever was there, so a wrong guess would destroy the real value before its
+        // owner ever submits it — turning "two callers race the same code" into "one wrong
+        // guess denies the legitimate caller." A transaction with a value condition is
+        // StackExchange.Redis's own C# primitive for a delete that only commits if the value
+        // still matches when the server checks — the check and the delete happen as one
+        // server-side unit, so a caller presenting the wrong value never deletes anything.
+        //
+        // SER301 below suggests StringDeleteAsync(key, ValueCondition.Equal(...)) instead —
+        // that needs Redis 8.4+, and tiki-shared-infra pins the floating `redis:8-alpine` tag,
+        // so it isn't a safe assumption yet. Revisit once the pinned version is confirmed.
+#pragma warning disable SER301
+        var database = redis.GetDatabase();
+        var transaction = database.CreateTransaction();
+        transaction.AddCondition(Condition.StringEqual(fullKey, expectedBytes));
+        var delete = transaction.KeyDeleteAsync(fullKey);
+        var committed = await transaction.ExecuteAsync();
+#pragma warning restore SER301
+
+        if (!committed)
+            return false;
+
+        await delete;
+        l1.Remove(fullKey);
+        return true;
     }
 
     private void BackfillL1<T>(string fullKey, T value, TieredCacheEntryOptions entryOptions)

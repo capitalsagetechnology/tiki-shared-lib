@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <PackageId>Tiki.Contracts.Business</PackageId>
+    <Version>$(TikiVersion)</Version>
+    <Description>Kafka event contracts for business signup and lifecycle events — the shapes Identity publishes and other services consume. Records and topic names only; no transport.</Description>
+    <PackageTags>tiki;contracts;business;kafka;events</PackageTags>
+    <RootNamespace>Tiki.Contracts.Business</RootNamespace>
+    <AssemblyName>Tiki.Contracts.Business</AssemblyName>
+
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Tiki.Shared only, for BaseEvent — same reasoning as Tiki.Contracts.Notifications: every
+      producer and consumer on the platform already depends on Tiki.Shared, so deriving from its
+      envelope adds nothing to their graph while giving every business event the same trace id,
+      source service and subject id every other event on the platform carries.
+    -->
+    <ProjectReference Include="..\..\Tiki.Shared\Tiki.Shared.csproj" />
+  </ItemGroup>
+
+</Project>
