@@ -5,7 +5,7 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
-## [0.7.9] — 2026-09-11
+## [0.8.1] — 2026-09-11
 
 ### Added — `EmailRequested.FromDisplayNameOverride`
 
@@ -16,6 +16,14 @@ producer now sets `FromDisplayNameOverride` to push its own preferred name; left
 falls back to the Notification service's configured default display name exactly as before.
 Additive: `FromOverride` and every other field are unchanged, and existing producers that never
 set the new field see no behavior change.
+
+## [0.8.0] — 2026-09-11
+
+### Added — `exchangerates.proto` (Tiki.Grpc.Contracts.Integration)
+
+New provider proto for ExchangeRatesAPI FX rates (`ExchangeRatesService`) backed by GET
+`/v1/latest`. Reuses the live-rates and cache-settings messages already defined in
+`currencylayer.proto`: `GetLiveRates`, `GetCacheSettings`, and `UpdateCacheSettings`.
 
 ## [0.7.4] — 2026-09-09
 
