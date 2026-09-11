@@ -53,6 +53,11 @@ public sealed record EmailRequested : NotificationEvent
     public string? FromOverride { get; init; }
 
     /// <summary>
+    /// Overrides the configured default sender display name. Rarely needed
+    /// </summary>
+    public string? FromDisplayNameOverride { get; init; }
+
+    /// <summary>
     /// The client the action link should point at, e.g. <c>https://backoffice.tiki.africa</c>.
     /// </summary>
     /// <remarks>
