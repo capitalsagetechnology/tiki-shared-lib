@@ -5,6 +5,25 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
+## [Unreleased]
+
+### Added — `ComplianceService.EvaluateTransaction`
+
+`Tiki.Grpc.Contracts.Compliance` adds the synchronous transaction-monitoring gate used by Wallet
+Service before it processes a customer or business transaction. Wallet supplies the transaction,
+subject, sender, recipient and request-context fields in `EvaluateTransactionRequest`; Compliance
+checks account eligibility and existing holds, submits the transaction for provider screening
+through Integration Service, and replies with `EvaluateTransactionReply`.
+
+The new `TransactionSubjectType` distinguishes customer and business transactions. The new
+`TransactionDecision` returns `PROCESS`, `HELD` or `DENIED`; Wallet may process only when the reply's
+decision is `PROCESS` and `should_process` is `true`. A held reply includes the fraud-review ticket
+identifier when one has been created. The RPC is intended only for the authenticated Wallet Service
+caller and uses the existing service-to-service HMAC authentication pipeline.
+
+This is an additive public contract change and therefore advances the shared package family from
+0.8.0 to 0.9.0.
+
 ## [0.8.0] — 2026-09-11
 
 ### Added — `exchangerates.proto` (Tiki.Grpc.Contracts.Integration)
