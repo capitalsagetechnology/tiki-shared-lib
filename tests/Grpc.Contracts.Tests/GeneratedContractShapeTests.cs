@@ -91,6 +91,22 @@ public class GeneratedContractShapeTests
             "RefundTransaction");
 
     [Fact]
+    public void Integration_ExchangeRates_contract_generates_both_client_stub_and_service_base() =>
+        AssertGeneratesBoth(
+            typeof(IntegrationNs.ExchangeRatesService.ExchangeRatesServiceClient),
+            typeof(IntegrationNs.ExchangeRatesService.ExchangeRatesServiceBase));
+
+    [Theory]
+    [InlineData("GetLiveRates")]
+    [InlineData("GetCacheSettings")]
+    [InlineData("UpdateCacheSettings")]
+    public void Integration_ExchangeRates_rpc_is_present_on_both_the_stub_and_the_base(string rpcName) =>
+        AssertRpcPresentOnBoth(
+            typeof(IntegrationNs.ExchangeRatesService.ExchangeRatesServiceClient),
+            typeof(IntegrationNs.ExchangeRatesService.ExchangeRatesServiceBase),
+            rpcName);
+
+    [Fact]
     public void Integration_Kycaid_contract_generates_both_client_stub_and_service_base() =>
         AssertGeneratesBoth(
             typeof(IntegrationNs.KycaidService.KycaidServiceClient),

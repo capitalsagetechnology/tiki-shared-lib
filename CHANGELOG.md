@@ -5,6 +5,14 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
+## [0.8.0] — 2026-09-11
+
+### Added — `exchangerates.proto` (Tiki.Grpc.Contracts.Integration)
+
+New provider proto for ExchangeRatesAPI FX rates (`ExchangeRatesService`) backed by GET
+`/v1/latest`. Reuses the live-rates and cache-settings messages already defined in
+`currencylayer.proto`: `GetLiveRates`, `GetCacheSettings`, and `UpdateCacheSettings`.
+
 ## [0.7.4] — 2026-09-09
 
 ### Added — `pateno.proto` (Tiki.Grpc.Contracts.Integration)
