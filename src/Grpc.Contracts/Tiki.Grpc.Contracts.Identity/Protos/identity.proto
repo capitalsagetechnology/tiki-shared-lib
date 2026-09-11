@@ -24,6 +24,10 @@ service IdentityService {
   // --- Business owner profile ---
   rpc GetBusinessOwnerProfile (GetBusinessOwnerProfileRequest) returns (BusinessOwnerProfileDetails);
   rpc UpdateBusinessOwnerProfile (UpdateBusinessOwnerProfileRequest) returns (BusinessOwnerProfileDetails);
+
+  // --- Customer ---
+  rpc GetCustomerById (GetCustomerByIdRequest) returns (CustomerDetails);
+  rpc UpdateCustomer (UpdateCustomerRequest) returns (CustomerDetails);
 }
 
 message PingRequest {
@@ -149,4 +153,64 @@ message BusinessOwnerProfileDetails {
   string government_id_url = 10;
   string kyc_status = 11;
   bool profile_completed = 12;
+}
+
+// --- Customer ---
+
+message GetCustomerByIdRequest {
+  string user_id = 1;
+}
+
+// Partial update — only the fields actually set (see the generated per-field `HasXxx`) are
+// applied; a field left unset leaves that property untouched on the entity.
+message UpdateCustomerRequest {
+  string user_id = 1;
+  optional string first_name = 2;
+  optional string last_name = 3;
+  optional string username = 4;
+  // Tiki.Shared.Core.Enums.CitizenshipStatus member name, e.g. "Citizen".
+  optional string citizenship_status = 5;
+  optional string country_id = 6;
+  // Tiki.Shared.Core.Enums.KycStatus member name, e.g. "InReview".
+  optional string kyc_status = 7;
+  // ISO 8601 date, e.g. "1990-01-01".
+  optional string dob = 8;
+  optional string address = 9;
+  optional string city = 10;
+  optional string state = 11;
+  optional string occupation = 12;
+  optional string referral_code = 13;
+  // Tiki.Shared.Core.Enums.AddressVerificationStatus member name, e.g. "Verified".
+  optional string address_verification_status = 14;
+  // Tiki.Shared.Core.Enums.CustomerStatus member name, e.g. "Active".
+  optional string customer_status = 15;
+  // Tiki.Shared.Core.Enums.SanctionScreeningStatus member name, e.g. "NoMatch".
+  optional string sanction_screening_status = 16;
+  optional string status_update_reason = 17;
+}
+
+message CustomerDetails {
+  string user_id = 1;
+  string email = 2;
+  bool email_verified = 3;
+  string phone_number = 4;
+  bool phone_number_verified = 5;
+  string first_name = 6;
+  string last_name = 7;
+  string username = 8;
+  string citizenship_status = 9;
+  string kyc_status = 10;
+  bool has_transaction_pin = 11;
+  CountryDetails country = 12;
+  // ISO 8601 date, e.g. "1990-01-01". Empty when unset.
+  string dob = 13;
+  string address = 14;
+  string city = 15;
+  string state = 16;
+  string occupation = 17;
+  string referral_code = 18;
+  string address_verification_status = 19;
+  string customer_status = 20;
+  string sanction_screening_status = 21;
+  string status_update_reason = 22;
 }

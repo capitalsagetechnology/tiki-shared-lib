@@ -1,0 +1,151 @@
+syntax = "proto3";
+
+option csharp_namespace = "Tiki.Grpc.Contracts.Integration";
+
+package tiki.grpc.contracts.integration;
+
+// Pateno API owned by the Integration service - Interac e-Transfer and bill payment, via
+// DC Bank's "Client API (ClientSandbox)" integration surface. Field names mirror
+// tiki-integrations-api's Application-layer Pateno DTOs
+// Decimals travel as strings, per this package's existing convention
+service PatenoService {
+  rpc CreateEtransferRequestMoney (CreateEtransferRequestMoneyRequest) returns (EtransferRequestMoneyReply);
+  rpc SearchIncomingTransfers (SearchIncomingTransfersRequest) returns (SearchIncomingTransfersReply);
+  rpc CreateEtransferTransactionWithCustomer (CreateEtransferTransactionWithCustomerRequest) returns (EtransferTransactionReply);
+  rpc SearchPayee (SearchPayeeRequest) returns (SearchPayeeReply);
+  rpc CreateIndividualBillPayment (CreateIndividualBillPaymentRequest) returns (BillPaymentReply);
+}
+
+message CreateEtransferRequestMoneyRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string customer_name = 3;
+  string email = 4;
+  string phone_country_code = 5;
+  string phone_number = 6;
+  int32 notification_type = 7;
+  string amount = 8;
+  string description = 9;
+  string client_reference_number = 10;
+  bool editable_fulfill_amount = 11;
+  string money_req_exp_date = 12;
+  int64 financial_account_id = 13;
+}
+
+message EtransferRequestMoneyReply {
+  int64 transaction_id = 1;
+  int64 transaction_etransfer_id = 2;
+  string transaction_reference_number = 3;
+  string etransfer_reference_number = 4;
+  string gateway_url = 5;
+  string client_reference_number = 6;
+}
+
+message SearchIncomingTransfersRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string start_date = 3;
+  string end_date = 4;
+  string amount = 5;
+  int64 account_number = 6;
+  string transaction_type_code = 7;
+  string transaction_reference_number = 8;
+}
+
+message IncomingTransferSummary {
+  string transaction_date = 1;
+  string sender_name = 2;
+  string sender_bank_name = 3;
+  string sender_bank_transit_number = 4;
+  int64 account_number = 5;
+  string transaction_type = 6;
+  string amount = 7;
+  string reference_number = 8;
+  string description = 9;
+  string transaction_reference_number = 10;
+  bool is_autodeposit = 11;
+  string financial_institution = 12;
+  string remittance_unstructured = 13;
+  string payment_type = 14;
+}
+
+message SearchIncomingTransfersReply {
+  repeated IncomingTransferSummary transfers = 1;
+}
+
+message CreateEtransferTransactionWithCustomerRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string customer_name = 3;
+  string email = 4;
+  string transaction_type_code = 5;
+  string customer_store_code = 6;
+  string description = 7;
+  string amount = 8;
+  string priority_type_code = 9;
+  string money_req_exp_date = 10;
+  string date_of_funds = 11;
+  int32 notification_type = 12;
+  string security_question = 13;
+  string security_question_answer = 14;
+  bool editable_fulfill_amount = 15;
+  string phone_number = 16;
+  string phone_country_code = 17;
+  string client_reference_number = 18;
+  string transfer_type = 19;
+  string account_number = 20;
+  int64 financial_account_id = 21;
+}
+
+message EtransferTransactionReply {
+  bool is_succeeded = 1;
+  int64 transaction_id = 2;
+  int64 transaction_etransfer_id = 3;
+  string transaction_reference_number = 4;
+  int64 payee_id = 5;
+  int64 transaction_detail_table_id = 6;
+  string error_description = 7;
+  string validation_code = 8;
+  string interac_reference_number = 9;
+  string client_reference_number = 10;
+  string customer_number = 11;
+  string gateway_url = 12;
+}
+
+message SearchPayeeRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string customer_number = 3;
+  string payee_code = 4;
+  string payee_account_number = 5;
+  string description = 6;
+  string recipient_name = 7;
+}
+
+message PayeeSummary {
+  int64 id = 1;
+  string payee_code = 2;
+  string payee_account_number = 3;
+  string amount = 4;
+  string description = 5;
+  string recipient_name = 6;
+}
+
+message SearchPayeeReply {
+  repeated PayeeSummary payees = 1;
+}
+
+message CreateIndividualBillPaymentRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string customer_number = 3;
+  string payee_code = 4;
+  string payee_name = 5;
+  string amount = 6;
+  string payee_account_number = 7;
+  string description = 8;
+}
+
+message BillPaymentReply {
+  int64 transaction_id = 1;
+}

@@ -88,6 +88,7 @@ public static class TikiJwtExtensions
         // Scoped, not singleton: it reads ISessionAccessor, which is per-request. Registered
         // as a singleton this fails at startup under DI validation — which is how it was caught.
         services.AddScoped<IAuthorizationHandler, Authorization.PermissionAuthorizationHandler>();
+        services.AddScoped<IAuthorizationHandler, Authorization.BusinessPermissionAuthorizationHandler>();
 
         services.AddAuthorization(authorization =>
         {
