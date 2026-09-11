@@ -5,7 +5,7 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
-## [0.7.9] — 2026-09-11
+## [0.8.0] — 2026-09-11
 
 ### Added — `exchangerates.proto` (Tiki.Grpc.Contracts.Integration)
 
