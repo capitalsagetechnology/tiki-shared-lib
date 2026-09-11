@@ -5,6 +5,18 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
+## [0.8.1] — 2026-09-11
+
+### Added — `EmailRequested.FromDisplayNameOverride`
+
+`Tiki.Contracts.Notifications`' `EmailRequested` gains `FromDisplayNameOverride`, alongside the
+existing `FromOverride`. `FromOverride` is address-only, so a producer that wanted its emails to
+show a different sender *name* — not just a different mailbox — had no way to ask for one. A
+producer now sets `FromDisplayNameOverride` to push its own preferred name; left null, sending
+falls back to the Notification service's configured default display name exactly as before.
+Additive: `FromOverride` and every other field are unchanged, and existing producers that never
+set the new field see no behavior change.
+
 ## [Unreleased]
 
 ### Added — `ComplianceService.EvaluateTransaction`
