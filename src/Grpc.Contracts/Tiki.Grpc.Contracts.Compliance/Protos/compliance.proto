@@ -12,6 +12,9 @@ package tiki.grpc.contracts.compliance;
 // provider that means for the tenant and country in question. KycProvider below reports
 // which one was used — it is a fact about a completed round, not a caller's choice.
 service ComplianceService {
+  // Wallet-only synchronous gate. Compliance records the request, checks eligibility and open
+  // holds, submits it to SmartComply through Integration, and returns Process only for PASS.
+  rpc EvaluateTransaction (EvaluateTransactionRequest) returns (EvaluateTransactionReply);
   // Identity-only, HMAC authenticated. Tenant comes from signed metadata.
   // Start is retry-safe by tenant + business_id; returns the original draft without replacing it.
   rpc StartBusinessKyb (StartBusinessKybRequest) returns (BusinessKybReceipt);
@@ -36,6 +39,50 @@ service ComplianceService {
   // The narrow question — "is this subject verified?" — for a caller that needs an answer
   // rather than a profile.
   rpc GetVerificationStatus (GetVerificationStatusRequest) returns (GetVerificationStatusResponse);
+}
+
+message EvaluateTransactionRequest {
+  string transaction_id = 1;
+  string reference = 2;
+  string subject_id = 3;
+  TransactionSubjectType subject_type = 4;
+  bool subject_is_active = 5;
+  string amount = 6;
+  string currency = 7;
+  string transaction_type = 8;
+  string account_type = 9;
+  string customer_email = 10;
+  string sender_name = 11;
+  string sender_account_number = 12;
+  string sender_bank_code = 13;
+  string recipient_name = 14;
+  string recipient_account_number = 15;
+  string recipient_bank_code = 16;
+  string narration = 17;
+  string ip_address = 18;
+  string location = 19;
+}
+
+message EvaluateTransactionReply {
+  string monitoring_id = 1;
+  string transaction_id = 2;
+  TransactionDecision decision = 3;
+  bool should_process = 4;
+  string reason = 5;
+  string held_ticket_id = 6;
+}
+
+enum TransactionSubjectType {
+  TRANSACTION_SUBJECT_TYPE_UNSPECIFIED = 0;
+  TRANSACTION_SUBJECT_TYPE_CUSTOMER = 1;
+  TRANSACTION_SUBJECT_TYPE_BUSINESS = 2;
+}
+
+enum TransactionDecision {
+  TRANSACTION_DECISION_UNSPECIFIED = 0;
+  TRANSACTION_DECISION_PROCESS = 1;
+  TRANSACTION_DECISION_HELD = 2;
+  TRANSACTION_DECISION_DENIED = 3;
 }
 
 // The subject details a provider needs to open a session. Provider-neutral by design.
