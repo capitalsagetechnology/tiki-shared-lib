@@ -109,12 +109,13 @@ public static class AuthExtensions
     /// Registers one <see cref="IConnectionMultiplexer"/> for the process, once.
     /// </summary>
     /// <remarks>
-    /// Guarded because <c>AddTikiSessions</c> and <c>AddTikiServiceAuth</c> both need Redis
-    /// and most services call both. StackExchange.Redis is designed to be shared — a
+    /// Guarded because <c>AddTikiSessions</c>, <c>AddTikiServiceAuth</c> and
+    /// <c>Caching.CachingExtensions.AddTikiCache</c> all need Redis and most services call
+    /// more than one of them. StackExchange.Redis is designed to be shared — a
     /// multiplexer per registration would open a second connection pool for no benefit, and
     /// per-scope would exhaust connections under load.
     /// </remarks>
-    private static void TryAddRedis(this IServiceCollection services, string connectionString)
+    internal static void TryAddRedis(this IServiceCollection services, string connectionString)
     {
         if (services.Any(d => d.ServiceType == typeof(IConnectionMultiplexer)))
             return;

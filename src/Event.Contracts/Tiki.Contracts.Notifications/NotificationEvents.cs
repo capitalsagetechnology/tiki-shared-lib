@@ -53,6 +53,11 @@ public sealed record EmailRequested : NotificationEvent
     public string? FromOverride { get; init; }
 
     /// <summary>
+    /// Overrides the configured default sender display name. Rarely needed
+    /// </summary>
+    public string? FromDisplayNameOverride { get; init; }
+
+    /// <summary>
     /// The client the action link should point at, e.g. <c>https://backoffice.tiki.africa</c>.
     /// </summary>
     /// <remarks>
@@ -111,6 +116,9 @@ public static class EmailTemplates
     public const string AccountSuspended = "account-suspended";
 
     public const string AccountReinstated = "account-reinstated";
+
+    /// <summary>A one-time verification/login code, delivered by email.</summary>
+    public const string OtpCode = "otp-code";
 }
 
 /// <summary>
@@ -136,4 +144,7 @@ public static class EmailModelKeys
     /// <summary>Where the request came from, for the "was this you?" line on security emails.</summary>
     public const string RequestIpAddress = "requestIpAddress";
     public const string RequestedAt = "requestedAt";
+
+    /// <summary>The one-time code itself, for <see cref="EmailTemplates.OtpCode"/>.</summary>
+    public const string Code = "code";
 }

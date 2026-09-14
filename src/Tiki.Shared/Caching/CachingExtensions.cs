@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Tiki.Shared.Auth;
 
 namespace Tiki.Shared.Caching;
 
@@ -35,6 +36,8 @@ public static class CachingExtensions
 
         services.AddMemoryCache();
         services.AddStackExchangeRedisCache(redis => redis.Configuration = redisConnectionString);
+
+        services.TryAddRedis(redisConnectionString);
         services.AddSingleton<ITieredCache, TieredCache>();
 
         return services;

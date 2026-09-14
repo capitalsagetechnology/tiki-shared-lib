@@ -3,6 +3,7 @@ using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Moq;
+using StackExchange.Redis;
 using Tiki.Shared.Caching;
 using Tiki.Shared.Extensions;
 using Xunit;
@@ -18,8 +19,14 @@ public class TieredCacheTests
         DefaultL2Ttl = TimeSpan.FromMinutes(10),
     };
 
+    // Unused by every test below — none of them exercise SetOnceAsync/TryConsumeAsync, which
+    // are the only members that touch it. Real concurrency behavior for those is verified
+    // against a live Redis instance instead; a mocked ITransaction can't demonstrate an
+    // actual race.
+    private static readonly IConnectionMultiplexer UnusedRedis = new Mock<IConnectionMultiplexer>().Object;
+
     private static TieredCache CreateSut(IMemoryCache l1, Mock<IDistributedCache> l2Mock) =>
-        new(l1, l2Mock.Object, Options.Create(CacheOptions));
+        new(l1, l2Mock.Object, UnusedRedis, Options.Create(CacheOptions));
 
     [Fact]
     public async Task Full_miss_invokes_factory_once_and_writes_through_both_tiers()

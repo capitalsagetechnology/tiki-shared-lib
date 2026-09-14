@@ -144,4 +144,14 @@ public sealed record TikiSession
         var effective = EffectivePermissions(tenantId);
         return permissions.Any(p => effective.Contains(p, StringComparer.Ordinal));
     }
+
+    /// <summary>
+    /// Whether this session — acting for the business on <see cref="BusinessId"/> — holds a
+    /// business permission. Checked against <see cref="HomeTenantId"/> rather than a
+    /// per-request active tenant: a business team member belongs to exactly one tenant and one
+    /// business, so business permissions are folded into that one grant rather than varying by
+    /// which tenant a request happens to select.
+    /// </summary>
+    public bool HasBusinessPermission(BusinessModule module, PermissionAction action) =>
+        BusinessId is not null && HasPermission(BusinessPermission.Format(module, action), HomeTenantId);
 }
