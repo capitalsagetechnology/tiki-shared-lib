@@ -31,6 +31,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Event.Contracts", "Event.Co
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tiki.Contracts.Notifications", "src\Event.Contracts\Tiki.Contracts.Notifications\Tiki.Contracts.Notifications.csproj", "{525A0236-77C4-4AB2-9606-F10F299360F5}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Event.Contracts", "Event.Contracts", "{BA36BA01-63A5-5F38-C219-DECA207D72A2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
