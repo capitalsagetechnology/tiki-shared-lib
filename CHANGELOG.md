@@ -22,9 +22,11 @@ set the new field see no behavior change.
 ### Added — `reliant.proto` (Tiki.Grpc.Contracts.Integration)
 
 New provider proto for Reliant ("RamfiFe") - US bank account provisioning, KYC-gated client
-onboarding, ACH funding/withdrawal, and payouts. `ReliantService` exposes the 23 endpoints
-tiki-integrations-api's Reliant adapter actually calls, matching
-`docs/RELIANT_INTEGRATION.md`: 9 data reads (`GetClient`, `GetClientBalance`, `GetBankAccount`,
+onboarding, ACH funding/withdrawal, and payouts. `ReliantService` exposes 22 RPCs, matching
+every endpoint tiki-integrations-api's Reliant adapter calls except authentication
+(`POST /api/FE/ProvisionToken`), which is internal token-provisioning plumbing inside the owning
+service, never its own RPC - see `docs/RELIANT_INTEGRATION.md` for the full 23-endpoint reference
+this proto's 22 RPCs are drawn from. 9 data reads (`GetClient`, `GetClientBalance`, `GetBankAccount`,
 `GetClientLedger`, `GetReturns`, `GetHeldClients`, `GetTransactions`, `GetDepositInfo`,
 `GetDocumentStatus`), 7 certified writes (`NewClient`, `AddDocument`,
 `UpdateDefaultBankAccount`, `AddClientFunds`, `AddPendingFunds`, `AddFundsFromBankAccount`,
