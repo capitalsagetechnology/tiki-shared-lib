@@ -1,0 +1,464 @@
+syntax = "proto3";
+
+option csharp_namespace = "Tiki.Grpc.Contracts.Integration";
+
+package tiki.grpc.contracts.integration;
+
+// Reliant ("RamfiFe") API owned by the Integration service - US bank account provisioning,
+// KYC-gated client onboarding, ACH funding/withdrawal, and payouts (API contract ramfi-fe-v1.1).
+// Field names mirror tiki-integration-service's Application-layer Reliant DTOs. Decimals and
+// dates travel as strings, per this package's existing convention. Authentication (bearer token +
+// TOTP provisioning) is entirely internal to the Integration service - no RPC for it here.
+//
+// The six not-yet-certified writes (CloseClient, CancelBankDraft, WithdrawClientFunds,
+// TransferClientFunds, AddWalletAddress, AddFundsFromAddress) are refused by the Integration
+// service before any request reaches Reliant - see docs/RELIANT_INTEGRATION.md. They are still
+// part of this contract so a caller gets a typed rejection rather than a missing RPC.
+service ReliantService {
+  // ---- data reads ----
+  rpc GetClient (GetClientRequest) returns (ClientReply);
+  rpc GetClientBalance (GetClientBalanceRequest) returns (ClientBalanceReply);
+  rpc GetBankAccount (GetBankAccountRequest) returns (BankAccountReply);
+  rpc GetClientLedger (GetClientLedgerRequest) returns (ClientLedgerReply);
+  rpc GetReturns (GetReturnsRequest) returns (ReturnsReply);
+  rpc GetHeldClients (GetHeldClientsRequest) returns (HeldClientsReply);
+  rpc GetTransactions (GetTransactionsRequest) returns (TransactionsReply);
+  rpc GetDepositInfo (GetDepositInfoRequest) returns (DepositInfoReply);
+  rpc GetDocumentStatus (GetDocumentStatusRequest) returns (DocumentStatusReply);
+
+  // ---- writes - certified ----
+  rpc NewClient (NewClientRequest) returns (ClientReply);
+  rpc AddDocument (AddDocumentRequest) returns (AddDocumentReply);
+  rpc UpdateDefaultBankAccount (UpdateDefaultBankAccountRequest) returns (AckReply);
+  rpc AddClientFunds (AddClientFundsRequest) returns (MoneyMovementReply);
+  rpc AddPendingFunds (AddPendingFundsRequest) returns (MoneyMovementReply);
+  rpc AddFundsFromBankAccount (AddFundsFromBankAccountRequest) returns (MoneyMovementReply);
+  rpc PayRecurringPayee (PayRecurringPayeeRequest) returns (MoneyMovementReply);
+
+  // ---- writes - implemented but not certified (refused before any request reaches Reliant) ----
+  rpc CloseClient (CloseClientRequest) returns (AckReply);
+  rpc CancelBankDraft (CancelBankDraftRequest) returns (AckReply);
+  rpc WithdrawClientFunds (WithdrawClientFundsRequest) returns (MoneyMovementReply);
+  rpc TransferClientFunds (TransferClientFundsRequest) returns (MoneyMovementReply);
+  rpc AddWalletAddress (AddWalletAddressRequest) returns (AckReply);
+  rpc AddFundsFromAddress (AddFundsFromAddressRequest) returns (MoneyMovementReply);
+}
+
+// ---- data reads ------------------------------------------------------------------------------
+
+message GetClientRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string client_id = 3;
+  optional string user_id = 4;
+}
+
+// Shared by GetClient and NewClient. Fields beyond client_id/account_status/kyc_passed/on_hold
+// are not part of the published contract this was built against - extension_json carries them.
+message ClientReply {
+  string client_id = 1;
+  string account_status = 2;
+  optional bool kyc_passed = 3;
+  optional bool on_hold = 4;
+  // Raw JSON of the full response body.
+  string extension_json = 5;
+}
+
+message GetClientBalanceRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  // Up to 50 client IDs per call.
+  repeated string client_ids = 3;
+}
+
+message ClientBalanceEntry {
+  string client_id = 1;
+  // Decimal as an invariant-culture string.
+  optional string tradable = 2;
+  // Decimal as an invariant-culture string. PUSD - funds pending from an ACH draft.
+  optional string non_tradable = 3;
+  string currency = 4;
+  string extension_json = 5;
+}
+
+message ClientBalanceReply {
+  repeated ClientBalanceEntry balances = 1;
+}
+
+message GetBankAccountRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string client_id = 3;
+}
+
+// Never a raw account/routing number - the Integration service rejects a response carrying one
+// rather than returning it here.
+message BankAccountEntry {
+  string masked_account_number = 1;
+  string masked_routing_number = 2;
+  string name_on_account = 3;
+  optional int32 account_type = 4;
+  bool is_default = 5;
+}
+
+message BankAccountReply {
+  repeated BankAccountEntry accounts = 1;
+}
+
+message GetClientLedgerRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string client_id = 3;
+}
+
+message LedgerEntryItem {
+  // ISO-8601 timestamp.
+  string date = 1;
+  string type = 2;
+  // Decimal as an invariant-culture string.
+  optional string amount = 3;
+  string description = 4;
+  string extension_json = 5;
+}
+
+message ClientLedgerReply {
+  repeated LedgerEntryItem entries = 1;
+}
+
+message GetReturnsRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  // yyyy-MM-dd.
+  string start_date = 3;
+  string end_date = 4;
+}
+
+message AchReturnItem {
+  string client_id = 1;
+  // ISO-8601 timestamp.
+  string returned_at = 2;
+  // Decimal as an invariant-culture string.
+  optional string amount = 3;
+  string reason_code = 4;
+  string extension_json = 5;
+}
+
+message ReturnsReply {
+  repeated AchReturnItem returns = 1;
+}
+
+message GetHeldClientsRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+}
+
+message HeldClientItem {
+  string client_id = 1;
+  string reason = 2;
+  // ISO-8601 timestamp.
+  string held_at = 3;
+  string extension_json = 4;
+}
+
+message HeldClientsReply {
+  repeated HeldClientItem clients = 1;
+}
+
+message GetTransactionsRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  // yyyy-MM-dd.
+  string update_date = 3;
+  optional string client_id = 4;
+}
+
+message TransactionItem {
+  string client_id = 1;
+  // ISO-8601 timestamp.
+  string updated_at = 2;
+  string type = 3;
+  // Decimal as an invariant-culture string.
+  optional string amount = 4;
+  string status = 5;
+  string extension_json = 6;
+}
+
+message TransactionsReply {
+  repeated TransactionItem transactions = 1;
+}
+
+message GetDepositInfoRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string client_id = 3;
+}
+
+message DepositInfoReply {
+  string bank_name = 1;
+  string routing_number = 2;
+  string account_number = 3;
+  string memo_id = 4;
+  string extension_json = 5;
+}
+
+message GetDocumentStatusRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string document_id = 3;
+  string client_id = 4;
+}
+
+message DocumentStatusReply {
+  optional int32 status_code = 1;
+  string status_description = 2;
+  string extension_json = 3;
+}
+
+// ---- writes ------------------------------------------------------------------------------------
+
+message NewClientRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string client_id = 3;
+  string first_name = 4;
+  string last_name = 5;
+  string address = 6;
+  string city = 7;
+  string state = 8;
+  string zip = 9;
+  string tax_id = 10;
+  // yyyy-MM-dd.
+  string dob = 11;
+  string email = 12;
+  string phone = 13;
+  optional string address2 = 14;
+  optional string bank_account = 15;
+  optional string bank_name_on_account = 16;
+  optional string bank_routing = 17;
+  optional string middle_initial = 18;
+  // Supplying this drives KYB verification instead of the base consumer schema.
+  optional string business_name = 19;
+  // yyyy-MM-dd.
+  optional string date_of_formation = 20;
+  // Max 4.
+  repeated BeneficialOwner beneficial_owners = 21;
+  optional InternationalInfo international = 22;
+  // Attests this product's own KYC screening already ran, so Reliant skips its own LexisNexis
+  // screening for this client. The caller (not this contract) is responsible for populating this
+  // only from a completed KYC session and never sending a raw tax ID/SSN once this is supplied.
+  optional ExistingKycResult existing_kyc_result = 23;
+  repeated BankingIdentifier banking_identifiers = 24;
+  repeated GovernmentId government_ids = 25;
+}
+
+message BeneficialOwner {
+  optional string first_name = 1;
+  optional string last_name = 2;
+  optional string tax_id = 3;
+  // yyyy-MM-dd.
+  optional string dob = 4;
+  optional string address = 5;
+  optional string city = 6;
+  optional string state = 7;
+  optional string zip = 8;
+  optional string phone = 9;
+  // 0-100, decimal as an invariant-culture string.
+  string ownership_percentage = 10;
+  optional bool is_control_person = 11;
+}
+
+message InternationalInfo {
+  // ISO 3166-1 alpha-2 - the only field Reliant requires within this extension.
+  string primary_address_country = 1;
+  optional string country_of_onboarding = 2;
+  optional string intake_channel = 3;
+  optional string name_script = 4;
+  optional string name_romanized = 5;
+  repeated string nationalities = 6;
+  optional string country_of_residence = 7;
+  optional string gender = 8;
+}
+
+message ExistingKycResult {
+  string performed_by = 1;
+  // ISO-8601 timestamp.
+  string screened_at = 2;
+  // low, medium, high, unacceptable.
+  string risk_tier = 3;
+  // approved, declined, in_review.
+  string outcome = 4;
+  optional string screening_provider = 5;
+  // Decimal as an invariant-culture string.
+  optional string risk_score = 6;
+  optional bool sanctions_match = 7;
+  // ISO-8601 timestamp.
+  optional string expires_at = 8;
+}
+
+message BankingIdentifier {
+  string identifier_value = 1;
+  optional string type = 2;
+  optional string routing = 3;
+  optional string bank_name = 4;
+  optional bool is_primary = 5;
+}
+
+message GovernmentId {
+  string id_number = 1;
+  string issuing_country = 2;
+  optional string type = 3;
+  optional string authority = 4;
+  // yyyy-MM-dd.
+  optional string issued_at = 5;
+  optional string expires_at = 6;
+}
+
+message AddDocumentRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string client_id = 3;
+  // e.g. ID_VERIFICATION / ACH_AGREEMENT.
+  string doc_type = 4;
+  // Base64-encoded document body.
+  string doc_body = 5;
+}
+
+message AddDocumentReply {
+  string document_id = 1;
+  string extension_json = 2;
+}
+
+message UpdateDefaultBankAccountRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string client_id = 3;
+  // Max 40 chars.
+  string account_number = 4;
+  // Max 9 chars.
+  string routing_number = 5;
+  string name_on_account = 6;
+  int32 account_type = 7;
+  optional string user_id = 8;
+}
+
+message AddClientFundsRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string client_id = 3;
+  // USD amount to draft via ACH. Decimal as an invariant-culture string.
+  string amount = 4;
+  string external_reference = 5;
+  // yyyy-MM-dd.
+  optional string transaction_date = 6;
+}
+
+message AddPendingFundsRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string client_id = 3;
+  string external_transaction_id = 4;
+  // Decimal as an invariant-culture string.
+  string amount = 5;
+  // yyyy-MM-dd.
+  optional string expected_deposit_date = 6;
+  optional string client_reference = 7;
+}
+
+message AddFundsFromBankAccountRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string client_id = 3;
+  string external_transaction_id = 4;
+  // Decimal as an invariant-culture string.
+  string amount = 5;
+  // Reference to an offline-verified bank-account-on-file.
+  int32 funding_source_id = 6;
+}
+
+message PayRecurringPayeeRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  // Must exactly match the Integration service's configured RELIANT_REMITTANCE_PAYEE_ID or the
+  // call is refused before it reaches Reliant.
+  string payee_id = 3;
+  optional string client_id = 4;
+  optional string user_id = 5;
+  // Decimal as an invariant-culture string.
+  optional string amount = 6;
+  optional string description = 7;
+  optional string fee_name = 8;
+  optional string external_id = 9;
+}
+
+// Shared response shape for every money-movement write. Reliant's own response fields for these
+// endpoints are not part of the published contract this was built against, so anything beyond a
+// transaction id/reference echo is carried in extension_json.
+message MoneyMovementReply {
+  string transaction_id = 1;
+  string external_reference = 2;
+  string extension_json = 3;
+}
+
+message CloseClientRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string client_id = 3;
+}
+
+message CancelBankDraftRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string client_id = 3;
+  // Only applies to a draft set up via AddClientFunds.
+  int32 draft_id = 4;
+}
+
+message WithdrawClientFundsRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string client_id = 3;
+  // Decimal as an invariant-culture string.
+  string amount = 4;
+  string external_reference = 5;
+  optional string notes = 6;
+}
+
+message TransferClientFundsRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string from_client_id = 3;
+  string to_client_id = 4;
+  // Decimal as an invariant-culture string.
+  string amount = 5;
+  string currency = 6;
+  string external_reference = 7;
+  optional string from_user_id = 8;
+  optional string to_user_id = 9;
+}
+
+message AddWalletAddressRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string address = 3;
+  string address_identifier = 4;
+}
+
+message AddFundsFromAddressRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string client_id = 3;
+  // Should be the transaction hash.
+  string external_transaction_id = 4;
+  // Decimal as an invariant-culture string.
+  string amount = 5;
+  // External whitelisted source address.
+  string from_address = 6;
+  // Reliant custody receiving address (must be whitelisted).
+  string to_address = 7;
+  string funds_type = 8;
+}
+
+// Plain confirmation for a write with no documented response body of its own.
+message AckReply {
+  bool acknowledged = 1;
+}
