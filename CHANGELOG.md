@@ -19,6 +19,24 @@ set the new field see no behavior change.
 
 ## [Unreleased]
 
+### Added — PollIdentityVerificationDecision
+
+Identity may poll a submitted identity session when Veriff's webhook has not arrived.
+Compliance queries Integration's Veriff `GetDecision`, applies a recognized outcome through
+the same KYC aggregate settlement and Identity synchronization used by the webhook, and
+returns the persisted status and provider code/reason. Pending responses never settle KYC;
+repeated polls and late webhooks cannot apply a decided session twice. The additive public
+RPC advances the shared contract family to 0.13.0.
+
+### Added — SubmitIdentityVerification
+
+Identity may submit a customer's uploaded identity media for provider verification with
+`ComplianceService.SubmitIdentityVerification`. The request identifies the subject and Compliance
+session; Compliance validates ownership and required media before asking Integration to move the
+Veriff session to `submitted`. The reply reports the submission timestamp and current status.
+Repeated calls after successful submission do not submit the provider session again. This additive
+RPC advances the shared contract family to 0.12.0.
+
 ### Added — Compliance identity-verification RPCs
 
 `Tiki.Grpc.Contracts.Compliance` adds `StartIdentityVerification` and
