@@ -25,8 +25,7 @@ New provider proto for Reliant ("RamfiFe") - US bank account provisioning, KYC-g
 onboarding, ACH funding/withdrawal, and payouts. `ReliantService` exposes 22 RPCs, matching
 every endpoint tiki-integrations-api's Reliant adapter calls except authentication
 (`POST /api/FE/ProvisionToken`), which is internal token-provisioning plumbing inside the owning
-service, never its own RPC - see `docs/RELIANT_INTEGRATION.md` for the full 23-endpoint reference
-this proto's 22 RPCs are drawn from. 9 data reads (`GetClient`, `GetClientBalance`, `GetBankAccount`,
+service, never its own RPC. 9 data reads (`GetClient`, `GetClientBalance`, `GetBankAccount`,
 `GetClientLedger`, `GetReturns`, `GetHeldClients`, `GetTransactions`, `GetDepositInfo`,
 `GetDocumentStatus`), 7 certified writes (`NewClient`, `AddDocument`,
 `UpdateDefaultBankAccount`, `AddClientFunds`, `AddPendingFunds`, `AddFundsFromBankAccount`,
