@@ -131,6 +131,64 @@ public class GeneratedContractShapeTests
             rpcName);
 
     [Fact]
+    public void Integration_Reliant_contract_generates_both_client_stub_and_service_base() =>
+        AssertGeneratesBoth(
+            typeof(IntegrationNs.ReliantService.ReliantServiceClient),
+            typeof(IntegrationNs.ReliantService.ReliantServiceBase));
+
+    [Theory]
+    [InlineData("GetClient")]
+    [InlineData("GetClientBalance")]
+    [InlineData("GetBankAccount")]
+    [InlineData("GetClientLedger")]
+    [InlineData("GetReturns")]
+    [InlineData("GetHeldClients")]
+    [InlineData("GetTransactions")]
+    [InlineData("GetDepositInfo")]
+    [InlineData("GetDocumentStatus")]
+    [InlineData("NewClient")]
+    [InlineData("AddDocument")]
+    [InlineData("UpdateDefaultBankAccount")]
+    [InlineData("AddClientFunds")]
+    [InlineData("AddPendingFunds")]
+    [InlineData("AddFundsFromBankAccount")]
+    [InlineData("PayRecurringPayee")]
+    [InlineData("CloseClient")]
+    [InlineData("CancelBankDraft")]
+    [InlineData("WithdrawClientFunds")]
+    [InlineData("TransferClientFunds")]
+    [InlineData("AddWalletAddress")]
+    [InlineData("AddFundsFromAddress")]
+    public void Integration_Reliant_rpc_is_present_on_both_the_stub_and_the_base(string rpcName) =>
+        AssertRpcPresentOnBoth(
+            typeof(IntegrationNs.ReliantService.ReliantServiceClient),
+            typeof(IntegrationNs.ReliantService.ReliantServiceBase),
+            rpcName);
+
+    /// <summary>
+    /// <see cref="IntegrationNs.NewClientRequest"/> carries the KYC/identity extensions as their
+    /// own message types (<see cref="IntegrationNs.BeneficialOwner"/>,
+    /// <see cref="IntegrationNs.InternationalInfo"/>, <see cref="IntegrationNs.ExistingKycResult"/>,
+    /// <see cref="IntegrationNs.BankingIdentifier"/>, <see cref="IntegrationNs.GovernmentId"/>)
+    /// rather than inlined fields, so they stay reusable and their field numbers stay independently
+    /// stable if another Reliant message ever needs the same shape.
+    /// </summary>
+    [Fact]
+    public void Integration_Reliant_NewClientRequest_carries_the_expected_nested_message_types()
+    {
+        var request = typeof(IntegrationNs.NewClientRequest);
+
+        Assert.Equal(typeof(Google.Protobuf.Collections.RepeatedField<IntegrationNs.BeneficialOwner>),
+            request.GetProperty("BeneficialOwners")!.PropertyType);
+        Assert.Equal(typeof(IntegrationNs.InternationalInfo), request.GetProperty("International")!.PropertyType);
+        Assert.Equal(typeof(IntegrationNs.ExistingKycResult), request.GetProperty("ExistingKycResult")!.PropertyType);
+        Assert.Equal(typeof(Google.Protobuf.Collections.RepeatedField<IntegrationNs.BankingIdentifier>),
+            request.GetProperty("BankingIdentifiers")!.PropertyType);
+        Assert.Equal(typeof(Google.Protobuf.Collections.RepeatedField<IntegrationNs.GovernmentId>),
+            request.GetProperty("GovernmentIds")!.PropertyType);
+    }
+
+    [Fact]
     public void Compliance_GetVerificationStatus_rpc_is_present_on_both_the_stub_and_the_base()
     {
         var clientHasIt = typeof(ComplianceNs.ComplianceService.ComplianceServiceClient)
