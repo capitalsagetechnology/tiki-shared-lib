@@ -19,6 +19,34 @@ set the new field see no behavior change.
 
 ## [Unreleased]
 
+### Added — `reliant.proto` (Tiki.Grpc.Contracts.Integration)
+
+New provider proto for Reliant ("RamfiFe") - US bank account provisioning, KYC-gated client
+onboarding, ACH funding/withdrawal, and payouts. `ReliantService` exposes 22 RPCs, matching
+every endpoint tiki-integrations-api's Reliant adapter calls except authentication
+(`POST /api/FE/ProvisionToken`), which is internal token-provisioning plumbing inside the owning
+service, never its own RPC. 9 data reads (`GetClient`, `GetClientBalance`, `GetBankAccount`,
+`GetClientLedger`, `GetReturns`, `GetHeldClients`, `GetTransactions`, `GetDepositInfo`,
+`GetDocumentStatus`), 7 certified writes (`NewClient`, `AddDocument`,
+`UpdateDefaultBankAccount`, `AddClientFunds`, `AddPendingFunds`, `AddFundsFromBankAccount`,
+`PayRecurringPayee`), and 6 writes implemented but not yet certified by Reliant
+(`CloseClient`, `CancelBankDraft`, `WithdrawClientFunds`, `TransferClientFunds`,
+`AddWalletAddress`, `AddFundsFromAddress`) - the last six answer on the wire but are refused by
+the owning service before any request reaches Reliant, pending certification.
+
+`NewClientRequest` carries its business/beneficial-owner, international, external-KYC-attestation,
+and identifier extensions as their own reusable message types (`BeneficialOwner`,
+`InternationalInfo`, `ExistingKycResult`, `BankingIdentifier`, `GovernmentId`) rather than inlined
+fields, since Reliant's own API reuses the same shapes elsewhere (e.g. its own `UpdateClient`,
+which this integration does not call). Decimals and dates are invariant-culture strings, matching
+every other provider proto in this package; opaque/undocumented response data is carried as
+`extension_json` rather than dropped.
+
+Additive only - one new file under `Tiki.Grpc.Contracts.Integration/Protos/`, picked up by the
+existing `Protos/*.proto` wildcard with no `.csproj` change. No existing message or RPC changed,
+so nothing else in this repo's published surface moves. Advances the shared package family to
+0.10.0.
+
 ### Added — `ComplianceService.EvaluateTransaction`
 
 `Tiki.Grpc.Contracts.Compliance` adds the synchronous transaction-monitoring gate used by Wallet
