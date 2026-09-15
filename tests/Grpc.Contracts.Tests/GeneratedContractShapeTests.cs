@@ -222,6 +222,44 @@ public class GeneratedContractShapeTests
             typeof(ComplianceNs.ComplianceService.ComplianceServiceBase),
             "StartOnboardingScreening");
 
+    [Theory]
+    [InlineData("StartIdentityVerification")]
+    [InlineData("UploadIdentityVerificationDocument")]
+    public void Compliance_identity_verification_rpcs_generate_client_and_service_methods(string rpcName) =>
+        AssertRpcPresentOnBoth(
+            typeof(ComplianceNs.ComplianceService.ComplianceServiceClient),
+            typeof(ComplianceNs.ComplianceService.ComplianceServiceBase), rpcName);
+
+    [Fact]
+    public void Compliance_identity_verification_messages_have_the_expected_generated_fields()
+    {
+        AssertFields<ComplianceNs.StartIdentityVerificationRequest>(
+            ("SubjectId", typeof(string)), ("CountryCode", typeof(string)),
+            ("Subject", typeof(ComplianceNs.KycSubject)), ("CallbackUrl", typeof(string)));
+        AssertFields<ComplianceNs.IdentityVerificationSessionReply>(
+            ("ProfileId", typeof(string)), ("RoundId", typeof(string)),
+            ("SessionId", typeof(string)), ("Status", typeof(ComplianceNs.KycVerificationStatus)),
+            ("Url", typeof(string)),
+            ("SubmittedSides", typeof(Google.Protobuf.Collections.RepeatedField<ComplianceNs.IdentityDocumentSide>)));
+        AssertFields<ComplianceNs.UploadIdentityVerificationDocumentRequest>(
+            ("SubjectId", typeof(string)), ("SessionId", typeof(string)),
+            ("Side", typeof(ComplianceNs.IdentityDocumentSide)), ("DocumentType", typeof(string)),
+            ("Content", typeof(Google.Protobuf.ByteString)), ("ContentType", typeof(string)));
+        AssertFields<ComplianceNs.IdentityDocumentReceipt>(
+            ("SessionId", typeof(string)), ("Side", typeof(ComplianceNs.IdentityDocumentSide)),
+            ("SubmittedSides", typeof(Google.Protobuf.Collections.RepeatedField<ComplianceNs.IdentityDocumentSide>)));
+        Assert.Equal(new[] { "Unspecified", "Front", "Back", "Face" },
+            Enum.GetNames<ComplianceNs.IdentityDocumentSide>());
+    }
+
+    private static void AssertFields<T>(params (string Name, Type Type)[] fields)
+    {
+        foreach (var (name, type) in fields)
+        {
+            Assert.Equal(type, typeof(T).GetProperty(name)?.PropertyType);
+        }
+    }
+
     /// <summary>
     /// StartKycVerification is gone, not deprecated. A stub that still carries it lets a caller
     /// compile against an rpc the server no longer implements, and find out at runtime.
