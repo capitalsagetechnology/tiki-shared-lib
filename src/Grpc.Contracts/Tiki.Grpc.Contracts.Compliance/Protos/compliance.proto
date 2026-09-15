@@ -63,11 +63,16 @@ message IdentityVerificationSessionReply {
 }
 
 message UploadIdentityVerificationDocumentRequest {
+  // Unary upload: content must be 1 byte–10 MiB (10 * 1024 * 1024 bytes).
+  // Accepted content_type values: image/jpeg, image/jpg, image/png, application/pdf.
+  // Identity validates these before calling and configures its gRPC send limit above the
+  // serialized request size; Compliance reserves 11 MiB for protobuf metadata overhead.
+  // Larger files require a separately versioned streaming/chunked contract.
   string subject_id = 1;
   string session_id = 2;
   IdentityDocumentSide side = 3;
   string document_type = 4;
-  bytes content = 5;
+  bytes content = 5; // Raw bytes; never base64 or a URL to fetch.
   string content_type = 6;
 }
 
