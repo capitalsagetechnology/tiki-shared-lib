@@ -36,6 +36,11 @@ service ComplianceService {
   // Identity validates ownership, then forwards the customer id and raw document bytes.
   rpc StartIdentityVerification (StartIdentityVerificationRequest) returns (IdentityVerificationSessionReply);
   rpc UploadIdentityVerificationDocument (UploadIdentityVerificationDocumentRequest) returns (IdentityDocumentReceipt);
+  // Identity calls after uploading the required media. Retry returns the existing submission.
+  rpc SubmitIdentityVerification (SubmitIdentityVerificationRequest) returns (SubmitIdentityVerificationReply);
+  // Identity can poll when Veriff's decision webhook has not arrived. Only a final provider
+  // decision changes KYC; processing responses leave the session open.
+  rpc PollIdentityVerificationDecision (PollIdentityVerificationDecisionRequest) returns (PollIdentityVerificationDecisionReply);
 
   // A subject's whole KYC standing: the three current tracks, when the standing lapses,
   // and every round ever run against them.
@@ -80,6 +85,33 @@ message IdentityDocumentReceipt {
   string session_id = 1;
   IdentityDocumentSide side = 2;
   repeated IdentityDocumentSide submitted_sides = 3;
+}
+
+message SubmitIdentityVerificationRequest {
+  string subject_id = 1;
+  string session_id = 2; // Compliance session UUID, not Veriff's provider session id.
+}
+
+message SubmitIdentityVerificationReply {
+  string session_id = 1;
+  KycVerificationStatus status = 2;
+  bool submitted = 3;
+  string submitted_at = 4; // ISO-8601; empty if no submission was recorded.
+}
+
+message PollIdentityVerificationDecisionRequest {
+  string subject_id = 1;
+  string session_id = 2; // Compliance session UUID.
+}
+
+message PollIdentityVerificationDecisionReply {
+  string session_id = 1;
+  KycVerificationStatus status = 2;
+  bool decision_available = 3;
+  bool applied = 4; // False for pending or a decision already recorded by webhook/earlier poll.
+  string decided_at = 5; // ISO-8601; empty while pending.
+  int32 decision_code = 6; // Veriff code; zero when absent.
+  string decision_reason = 7; // Veriff reason; empty when absent.
 }
 
 enum IdentityDocumentSide {
