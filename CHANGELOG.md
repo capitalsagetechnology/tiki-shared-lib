@@ -19,6 +19,16 @@ set the new field see no behavior change.
 
 ## [Unreleased]
 
+### Added — Compliance identity-verification RPCs
+
+`Tiki.Grpc.Contracts.Compliance` adds `StartIdentityVerification` and
+`UploadIdentityVerificationDocument` for the Identity Service to open a customer's identity
+verification session and forward document bytes to Compliance. Identity remains the customer-facing
+owner and validates customer ownership; tenant scope continues to come from authenticated mesh
+metadata. The upload uses protobuf `bytes`, not multipart form data or base64 text.
+
+This is an additive public contract change and advances the shared package family to 0.11.0.
+
 ### Added — `reliant.proto` (Tiki.Grpc.Contracts.Integration)
 
 New provider proto for Reliant ("RamfiFe") - US bank account provisioning, KYC-gated client
