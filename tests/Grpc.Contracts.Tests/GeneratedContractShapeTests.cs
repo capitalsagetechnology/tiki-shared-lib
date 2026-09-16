@@ -2,6 +2,7 @@ using Xunit;
 using ComplianceNs = Tiki.Grpc.Contracts.Compliance;
 using IdentityNs = Tiki.Grpc.Contracts.Identity;
 using IntegrationNs = Tiki.Grpc.Contracts.Integration;
+using NotificationNs = Tiki.Grpc.Contracts.Notification;
 using TransactionNs = Tiki.Grpc.Contracts.Transaction;
 using WalletNs = Tiki.Grpc.Contracts.Wallet;
 
@@ -31,6 +32,39 @@ public class GeneratedContractShapeTests
         AssertGeneratesBoth(
             typeof(TransactionNs.TransactionService.TransactionServiceClient),
             typeof(TransactionNs.TransactionService.TransactionServiceBase));
+
+    [Fact]
+    public void Notification_contract_generates_both_client_stub_and_service_base() =>
+        AssertGeneratesBoth(
+            typeof(NotificationNs.NotificationProvidersService.NotificationProvidersServiceClient),
+            typeof(NotificationNs.NotificationProvidersService.NotificationProvidersServiceBase));
+
+    [Theory]
+    [InlineData("GetProviders")]
+    [InlineData("UpdatePrimaryProvider")]
+    public void Notification_rpc_is_present_on_both_the_stub_and_the_base(string rpcName) =>
+        AssertRpcPresentOnBoth(
+            typeof(NotificationNs.NotificationProvidersService.NotificationProvidersServiceClient),
+            typeof(NotificationNs.NotificationProvidersService.NotificationProvidersServiceBase),
+            rpcName);
+
+    [Fact]
+    public void Notification_channel_enum_has_the_specified_members() =>
+        Assert.Equal(
+            new[] { "Unspecified", "Email", "Sms" },
+            Enum.GetNames<NotificationNs.NotificationChannel>());
+
+    [Fact]
+    public void Notification_messages_have_the_expected_generated_fields()
+    {
+        AssertFields<NotificationNs.ChannelProviders>(
+            ("Channel", typeof(NotificationNs.NotificationChannel)), ("Primary", typeof(string)),
+            ("Chain", typeof(Google.Protobuf.Collections.RepeatedField<string>)));
+        AssertFields<NotificationNs.ProvidersReply>(
+            ("Channels", typeof(Google.Protobuf.Collections.RepeatedField<NotificationNs.ChannelProviders>)));
+        AssertFields<NotificationNs.UpdatePrimaryProviderRequest>(
+            ("Channel", typeof(NotificationNs.NotificationChannel)), ("Provider", typeof(string)));
+    }
 
     [Fact]
     public void Compliance_contract_generates_both_client_stub_and_service_base() =>
