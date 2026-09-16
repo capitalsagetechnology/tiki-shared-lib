@@ -261,6 +261,7 @@ public class GeneratedContractShapeTests
     [InlineData("UploadIdentityVerificationDocument")]
     [InlineData("SubmitIdentityVerification")]
     [InlineData("PollIdentityVerificationDecision")]
+    [InlineData("GetIdentityVerificationSession")]
     public void Compliance_identity_verification_rpcs_generate_client_and_service_methods(string rpcName) =>
         AssertRpcPresentOnBoth(
             typeof(ComplianceNs.ComplianceService.ComplianceServiceClient),
@@ -296,6 +297,19 @@ public class GeneratedContractShapeTests
             ("DecisionAvailable", typeof(bool)), ("Applied", typeof(bool)),
             ("DecidedAt", typeof(string)), ("DecisionCode", typeof(int)),
             ("DecisionReason", typeof(string)));
+        AssertFields<ComplianceNs.GetIdentityVerificationSessionRequest>(
+            ("SubjectId", typeof(string)), ("SessionId", typeof(string)));
+        AssertFields<ComplianceNs.IdentityVerificationSessionDetailsReply>(
+            ("SessionId", typeof(string)), ("Status", typeof(ComplianceNs.KycVerificationStatus)),
+            ("DocumentType", typeof(string)), ("Submitted", typeof(bool)),
+            ("SubmittedAt", typeof(string)),
+            ("SubmittedSides", typeof(Google.Protobuf.Collections.RepeatedField<ComplianceNs.IdentityDocumentSide>)),
+            ("Media", typeof(Google.Protobuf.Collections.RepeatedField<ComplianceNs.IdentityVerificationMediaReply>)));
+        AssertFields<ComplianceNs.IdentityVerificationMediaReply>(
+            ("MediaId", typeof(string)), ("Side", typeof(ComplianceNs.IdentityDocumentSide)),
+            ("DocumentType", typeof(string)), ("Submitted", typeof(bool)),
+            ("SubmittedAt", typeof(string)), ("ContentType", typeof(string)),
+            ("SizeBytes", typeof(long)));
         Assert.Equal(new[] { "Unspecified", "Front", "Back", "Face" },
             Enum.GetNames<ComplianceNs.IdentityDocumentSide>());
     }

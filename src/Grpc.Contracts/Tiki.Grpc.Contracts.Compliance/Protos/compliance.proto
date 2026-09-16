@@ -41,6 +41,8 @@ service ComplianceService {
   // Identity can poll when Veriff's decision webhook has not arrived. Only a final provider
   // decision changes KYC; processing responses leave the session open.
   rpc PollIdentityVerificationDecision (PollIdentityVerificationDecisionRequest) returns (PollIdentityVerificationDecisionReply);
+  // Returns resumable state for one customer-owned identity session.
+  rpc GetIdentityVerificationSession (GetIdentityVerificationSessionRequest) returns (IdentityVerificationSessionDetailsReply);
 
   // A subject's whole KYC standing: the three current tracks, when the standing lapses,
   // and every round ever run against them.
@@ -112,6 +114,31 @@ message PollIdentityVerificationDecisionReply {
   string decided_at = 5; // ISO-8601; empty while pending.
   int32 decision_code = 6; // Veriff code; zero when absent.
   string decision_reason = 7; // Veriff reason; empty when absent.
+}
+
+message GetIdentityVerificationSessionRequest {
+  string subject_id = 1;
+  string session_id = 2; // Compliance session UUID from the profile/start reply.
+}
+
+message IdentityVerificationSessionDetailsReply {
+  string session_id = 1;
+  KycVerificationStatus status = 2;
+  string document_type = 3; // Empty until the first document upload.
+  bool submitted = 4; // True after SubmitIdentityVerification succeeds.
+  string submitted_at = 5; // ISO-8601; empty until submitted.
+  repeated IdentityDocumentSide submitted_sides = 6;
+  repeated IdentityVerificationMediaReply media = 7;
+}
+
+message IdentityVerificationMediaReply {
+  string media_id = 1; // Compliance media UUID, never Veriff's media id.
+  IdentityDocumentSide side = 2;
+  string document_type = 3;
+  bool submitted = 4; // A returned media row has been accepted and recorded.
+  string submitted_at = 5; // ISO-8601.
+  string content_type = 6;
+  int64 size_bytes = 7;
 }
 
 enum IdentityDocumentSide {
@@ -290,6 +317,9 @@ message CustomerKycProfileResponse {
 
   // A UKVI share code must be cleared before this customer counts as verified.
   bool ukvi_share_code_required = 13;
+
+  // Compliance UUID of the newest non-final Identity session. Empty when none is resumable.
+  string current_identity_session_id = 14;
 }
 
 // Where a customer stands against sanctions and PEP lists.
