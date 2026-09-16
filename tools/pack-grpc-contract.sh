@@ -3,12 +3,12 @@
 # artifacts/grpc-contracts/, independent of Tiki.Shared's own pack/release cadence.
 #
 # Usage: tools/pack-grpc-contract.sh <service>
-#   <service> one of: identity, wallet, transaction, compliance, integration (case-insensitive)
+#   <service> one of: identity, wallet, transaction, compliance, integration, notification (case-insensitive)
 set -euo pipefail
 
 usage() {
   echo "Usage: $(basename "$0") <service>" >&2
-  echo "  <service> one of: identity, wallet, transaction, compliance, integration" >&2
+  echo "  <service> one of: identity, wallet, transaction, compliance, integration, notification" >&2
   exit 1
 }
 
@@ -23,6 +23,7 @@ case "$(echo "$1" | tr '[:upper:]' '[:lower:]')" in
   transaction) SERVICE="Transaction" ;;
   compliance)  SERVICE="Compliance" ;;
   integration) SERVICE="Integration" ;;
+  notification) SERVICE="Notification" ;;
   *) echo "error: unknown service '$1'" >&2; usage ;;
 esac
 

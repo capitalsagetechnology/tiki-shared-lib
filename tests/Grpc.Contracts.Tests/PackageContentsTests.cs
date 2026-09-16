@@ -13,7 +13,7 @@ namespace Tiki.Grpc.Contracts.Tests;
 /// </summary>
 public sealed class PackageContentsTests : IAsyncLifetime
 {
-    private static readonly string[] Services = ["Identity", "Wallet", "Transaction", "Compliance", "Integration"];
+    private static readonly string[] Services = ["Identity", "Wallet", "Transaction", "Compliance", "Integration", "Notification"];
 
     private readonly string _packOutputDir =
         Path.Combine(Path.GetTempPath(), "tiki-grpc-contracts-pack-" + Guid.NewGuid().ToString("n"));
@@ -134,6 +134,9 @@ public sealed class PackageContentsTests : IAsyncLifetime
             .GetFiles(Path.Combine(RepoPaths.ContractProjectDir("Integration"), "Protos"), "*.proto")
             .Select(f => Path.GetFileNameWithoutExtension(f)!)
             .ToArray(),
+        // Named after the RPC surface, not the owning service, matching every other
+        // provider-scoped proto file name in this repo.
+        "Notification" => ["notification-providers"],
         _ => [service.ToLowerInvariant()],
     };
 
