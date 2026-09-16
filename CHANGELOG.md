@@ -19,6 +19,16 @@ set the new field see no behavior change.
 
 ## [Unreleased]
 
+### Added — `Tiki.Grpc.Contracts.Notification` and `NotificationDeliveryFailed`
+
+New package `Tiki.Grpc.Contracts.Notification`, carrying `notification-providers.proto` — the
+admin surface for reading and changing which provider is primary per channel (email/SMS), backing
+`tiki-notification-api`'s dynamic multi-provider fallback. `Tiki.Contracts.Notifications` gains
+`NotificationDeliveryFailed` and its `notification.delivery.failed` topic: published once every
+configured provider for a channel has failed a message, carrying every provider tried and why.
+Both additive — no existing message, RPC, or field changes. Advances the shared package family to
+0.14.0.
+
 ### Added — PollIdentityVerificationDecision
 
 Identity may poll a submitted identity session when Veriff's webhook has not arrived.

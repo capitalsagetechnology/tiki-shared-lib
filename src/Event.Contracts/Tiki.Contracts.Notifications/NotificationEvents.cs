@@ -93,6 +93,33 @@ public sealed record SmsRequested : NotificationEvent
 }
 
 /// <summary>
+/// Every configured provider for a channel reported failed delivery for one message — the
+/// fallback chain is exhausted. Published by the Notification service itself, not consumed by it.
+/// </summary>
+public sealed record NotificationDeliveryFailed : NotificationEvent
+{
+    /// <summary>"email" or "sms".</summary>
+    public required string Channel { get; init; }
+
+    /// <summary>The original message's recipient — an email address or an E.164 number.</summary>
+    public required string To { get; init; }
+
+    /// <summary>
+    /// Every provider the fallback chain tried, in order, with why each one failed. The last
+    /// entry is what finally exhausted the chain.
+    /// </summary>
+    public required IReadOnlyList<ProviderAttempt> Attempts { get; init; }
+}
+
+/// <summary>One provider's attempt within a <see cref="NotificationDeliveryFailed"/> chain.</summary>
+public sealed record ProviderAttempt
+{
+    public required string Provider { get; init; }
+
+    public required string FailureReason { get; init; }
+}
+
+/// <summary>
 /// The template catalogue. Ids match the file names under the Notification service's
 /// <c>Templates/</c> directory.
 /// </summary>

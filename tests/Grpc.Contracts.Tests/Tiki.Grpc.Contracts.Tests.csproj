@@ -31,6 +31,7 @@
     <ProjectReference Include="..\..\src\Grpc.Contracts\Tiki.Grpc.Contracts.Transaction\Tiki.Grpc.Contracts.Transaction.csproj" />
     <ProjectReference Include="..\..\src\Grpc.Contracts\Tiki.Grpc.Contracts.Compliance\Tiki.Grpc.Contracts.Compliance.csproj" />
     <ProjectReference Include="..\..\src\Grpc.Contracts\Tiki.Grpc.Contracts.Integration\Tiki.Grpc.Contracts.Integration.csproj" />
+    <ProjectReference Include="..\..\src\Grpc.Contracts\Tiki.Grpc.Contracts.Notification\Tiki.Grpc.Contracts.Notification.csproj" />
   </ItemGroup>
 
 </Project>
