@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+option csharp_namespace = "Tiki.Grpc.Contracts.Notification";
+
+package tiki.grpc.contracts.notification;
+
+// Admin control over which provider is primary for each notification channel. Backed by Redis on
+// the Notification service's side, not fixed at deploy time — the fallback chain re-reads the
+// primary on every send, so a change here takes effect on the very next message with no restart.
+service NotificationProvidersService {
+  // The configured fallback chain for every channel, and which entry is currently primary.
+  rpc GetProviders (GetProvidersRequest) returns (ProvidersReply);
+
+  // Moves one provider to the front of its channel's chain. The provider must already be one of
+  // the chain's configured entries — this reorders who goes first, it does not register a new
+  // provider the service does not already know how to call.
+  rpc UpdatePrimaryProvider (UpdatePrimaryProviderRequest) returns (ProvidersReply);
+}
+
+enum NotificationChannel {
+  NOTIFICATION_CHANNEL_UNSPECIFIED = 0;
+  EMAIL = 1;
+  SMS = 2;
+}
+
+message GetProvidersRequest {
+}
+
+// One channel's configured chain and current primary.
+message ChannelProviders {
+  NotificationChannel channel = 1;
+  string primary = 2;
+  repeated string chain = 3;
+}
+
+message ProvidersReply {
+  repeated ChannelProviders channels = 1;
+}
+
+message UpdatePrimaryProviderRequest {
+  NotificationChannel channel = 1;
+  // Must be one of that channel's configured chain entries (case-insensitive)
+  string provider = 2;
+}

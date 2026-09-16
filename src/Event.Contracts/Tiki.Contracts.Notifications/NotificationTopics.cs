@@ -20,4 +20,10 @@ public static class NotificationTopics
     public const string SmsRequested = "notification.sms.requested";
 
     public const string SmsDeadLetter = "notification.sms.requested.dlq";
+
+    /// <summary>
+    /// Every configured provider for a channel failed to deliver one message — published by the
+    /// Notification service itself once its fallback chain is exhausted, not consumed by it.
+    /// </summary>
+    public const string DeliveryFailed = "notification.delivery.failed";
 }
