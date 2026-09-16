@@ -19,6 +19,14 @@ set the new field see no behavior change.
 
 ## [Unreleased]
 
+### Added — resumable identity-verification session state
+
+`CustomerKycProfileResponse.current_identity_session_id` identifies the newest open Identity
+session, and `ComplianceService.GetIdentityVerificationSession` returns that customer-owned
+session's document type, provider-submission state, submitted sides, and non-sensitive media
+metadata. The contract exposes Compliance UUIDs only; provider IDs, storage keys, document bytes,
+and URLs remain private. This additive public contract advances the shared family to 0.14.0.
+
 ### Added — PollIdentityVerificationDecision
 
 Identity may poll a submitted identity session when Veriff's webhook has not arrived.
