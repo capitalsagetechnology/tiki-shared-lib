@@ -19,6 +19,62 @@ set the new field see no behavior change.
 
 ## [Unreleased]
 
+### Added — PollIdentityVerificationDecision
+
+Identity may poll a submitted identity session when Veriff's webhook has not arrived.
+Compliance queries Integration's Veriff `GetDecision`, applies a recognized outcome through
+the same KYC aggregate settlement and Identity synchronization used by the webhook, and
+returns the persisted status and provider code/reason. Pending responses never settle KYC;
+repeated polls and late webhooks cannot apply a decided session twice. The additive public
+RPC advances the shared contract family to 0.13.0.
+
+### Added — SubmitIdentityVerification
+
+Identity may submit a customer's uploaded identity media for provider verification with
+`ComplianceService.SubmitIdentityVerification`. The request identifies the subject and Compliance
+session; Compliance validates ownership and required media before asking Integration to move the
+Veriff session to `submitted`. The reply reports the submission timestamp and current status.
+Repeated calls after successful submission do not submit the provider session again. This additive
+RPC advances the shared contract family to 0.12.0.
+
+### Added — Compliance identity-verification RPCs
+
+`Tiki.Grpc.Contracts.Compliance` adds `StartIdentityVerification` and
+`UploadIdentityVerificationDocument` for the Identity Service to open a customer's identity
+verification session and forward document bytes to Compliance. Identity remains the customer-facing
+owner and validates customer ownership; tenant scope continues to come from authenticated mesh
+metadata. The upload uses protobuf `bytes`, not multipart form data or base64 text.
+
+This is an additive public contract change and advances the shared package family to 0.11.0.
+
+### Added — `reliant.proto` (Tiki.Grpc.Contracts.Integration)
+
+New provider proto for Reliant ("RamfiFe") - US bank account provisioning, KYC-gated client
+onboarding, ACH funding/withdrawal, and payouts. `ReliantService` exposes 22 RPCs, matching
+every endpoint tiki-integrations-api's Reliant adapter calls except authentication
+(`POST /api/FE/ProvisionToken`), which is internal token-provisioning plumbing inside the owning
+service, never its own RPC. 9 data reads (`GetClient`, `GetClientBalance`, `GetBankAccount`,
+`GetClientLedger`, `GetReturns`, `GetHeldClients`, `GetTransactions`, `GetDepositInfo`,
+`GetDocumentStatus`), 7 certified writes (`NewClient`, `AddDocument`,
+`UpdateDefaultBankAccount`, `AddClientFunds`, `AddPendingFunds`, `AddFundsFromBankAccount`,
+`PayRecurringPayee`), and 6 writes implemented but not yet certified by Reliant
+(`CloseClient`, `CancelBankDraft`, `WithdrawClientFunds`, `TransferClientFunds`,
+`AddWalletAddress`, `AddFundsFromAddress`) - the last six answer on the wire but are refused by
+the owning service before any request reaches Reliant, pending certification.
+
+`NewClientRequest` carries its business/beneficial-owner, international, external-KYC-attestation,
+and identifier extensions as their own reusable message types (`BeneficialOwner`,
+`InternationalInfo`, `ExistingKycResult`, `BankingIdentifier`, `GovernmentId`) rather than inlined
+fields, since Reliant's own API reuses the same shapes elsewhere (e.g. its own `UpdateClient`,
+which this integration does not call). Decimals and dates are invariant-culture strings, matching
+every other provider proto in this package; opaque/undocumented response data is carried as
+`extension_json` rather than dropped.
+
+Additive only - one new file under `Tiki.Grpc.Contracts.Integration/Protos/`, picked up by the
+existing `Protos/*.proto` wildcard with no `.csproj` change. No existing message or RPC changed,
+so nothing else in this repo's published surface moves. Advances the shared package family to
+0.10.0.
+
 ### Added — `ComplianceService.EvaluateTransaction`
 
 `Tiki.Grpc.Contracts.Compliance` adds the synchronous transaction-monitoring gate used by Wallet

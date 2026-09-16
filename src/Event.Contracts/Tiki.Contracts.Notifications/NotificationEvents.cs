@@ -128,6 +128,14 @@ public static class EmailTemplates
     /// <summary>Invitation to join the platform — carries the link that sets a first password.</summary>
     public const string TeamMemberInvitation = "team-member-invitation";
 
+    /// <summary>
+    /// A business was created on someone's behalf (e.g. by sales) and needs its owner to set a
+    /// password — carries the onboarding link. Distinct from <see cref="TeamMemberInvitation"/>:
+    /// that one reads as joining an existing team, this one is a business's own account coming
+    /// online for the first time.
+    /// </summary>
+    public const string BusinessInvitation = "business-invitation";
+
     /// <summary>Sent once an invited member has set their password and can sign in.</summary>
     public const string WelcomeOnboarded = "welcome-onboarded";
 
@@ -167,6 +175,9 @@ public static class EmailModelKeys
     public const string TenantName = "tenantName";
     public const string RoleName = "roleName";
     public const string InvitedByName = "invitedByName";
+
+    /// <summary>The business's own name, for <see cref="EmailTemplates.BusinessInvitation"/>.</summary>
+    public const string BusinessName = "businessName";
 
     /// <summary>Where the request came from, for the "was this you?" line on security emails.</summary>
     public const string RequestIpAddress = "requestIpAddress";
