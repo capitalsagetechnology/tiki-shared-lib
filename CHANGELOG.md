@@ -19,6 +19,15 @@ set the new field see no behavior change.
 
 ## [Unreleased]
 
+### Added — `ComplianceService.GetBusinessKyb` and KYB decision email templates
+
+`GetBusinessKyb` returns a business KYB application as its applicant sees it — the submission,
+uploaded document metadata, and `missing_requirements` still blocking submission — so Identity can
+serve the whole owner journey (read, edit, upload, submit) over the mesh instead of sending owners
+to Compliance's own HTTP API. Identity-only, like the other business KYB RPCs; no analyst material
+is exposed. `EmailTemplates.BusinessKybApproved` and `BusinessKybDeclined` name the emails Identity
+sends when compliance decides. Additive; advances the shared family to 0.15.0.
+
 ### Added — resumable identity-verification session state
 
 `CustomerKycProfileResponse.current_identity_session_id` identifies the newest open Identity
