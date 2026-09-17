@@ -23,6 +23,10 @@ service ComplianceService {
   rpc SubmitBusinessKyb (BusinessKybApplicationRequest) returns (BusinessKybReceipt);
   // Creates/returns a linked draft from a rejected application. Upload then Submit the NEW id.
   rpc CreateBusinessKybResubmission (BusinessKybApplicationRequest) returns (BusinessKybReceipt);
+  // The applicant's own view of an application, for Identity's owner-facing KYB API: what they
+  // entered, what they uploaded, and what is still missing before it can be submitted. Carries no
+  // analyst material — reviews, notes, screening results and the audit trail stay in Compliance.
+  rpc GetBusinessKyb (BusinessKybApplicationRequest) returns (BusinessKybApplication);
   // The post-onboarding hook: Identity calls this once, as soon as a customer finishes
   // signing up, and Compliance decides for itself what that customer owes.
   //
@@ -468,6 +472,30 @@ message BusinessKybReceipt {
   string applicant_id = 3;
   string status = 4;
   string previous_application_id = 5;
+}
+message BusinessKybApplication {
+  string application_id = 1;
+  string business_id = 2;
+  string applicant_id = 3;
+  // Draft, Submitted, UnderReview, Approved, Rejected or Suspended.
+  string status = 4;
+  string previous_application_id = 5;
+  // ISO 8601. submitted_at is empty until the application is submitted.
+  string created_at = 6;
+  string submitted_at = 7;
+  BusinessKybSubmission submission = 8;
+  repeated BusinessKybDocumentSummary documents = 9;
+  // Plain-language reasons the application cannot be submitted yet. Empty once it can, and for
+  // any application that is no longer a draft.
+  repeated string missing_requirements = 10;
+}
+message BusinessKybDocumentSummary {
+  string document_id = 1;
+  // KybDocumentType numeric value, as UploadBusinessKybDocumentRequest.document_type.
+  int32 document_type = 2;
+  string content_type = 3;
+  int64 size_bytes = 4;
+  string uploaded_at = 5;
 }
 message BusinessKybSubmission {
   KybBusinessDetails business = 1;

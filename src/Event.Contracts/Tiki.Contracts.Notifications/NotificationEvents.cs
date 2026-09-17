@@ -154,6 +154,12 @@ public static class EmailTemplates
 
     /// <summary>A one-time verification/login code, delivered by email.</summary>
     public const string OtpCode = "otp-code";
+
+    /// <summary>A business owner's KYB was approved by compliance. Model: firstName, email, businessName.</summary>
+    public const string BusinessKybApproved = "business-kyb-approved";
+
+    /// <summary>A business owner's KYB was declined by compliance. Model: firstName, email, businessName. Never the analysts' notes.</summary>
+    public const string BusinessKybDeclined = "business-kyb-declined";
 }
 
 /// <summary>
