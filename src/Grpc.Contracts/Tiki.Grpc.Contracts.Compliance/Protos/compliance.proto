@@ -32,6 +32,18 @@ service ComplianceService {
   // unavailable provider cannot fail onboarding.
   rpc StartOnboardingScreening (StartOnboardingScreeningRequest) returns (StartOnboardingScreeningResponse);
 
+  // Identity owns the customer-facing HTTP/file-upload surface. These operations are mesh-only:
+  // Identity validates ownership, then forwards the customer id and raw document bytes.
+  rpc StartIdentityVerification (StartIdentityVerificationRequest) returns (IdentityVerificationSessionReply);
+  rpc UploadIdentityVerificationDocument (UploadIdentityVerificationDocumentRequest) returns (IdentityDocumentReceipt);
+  // Identity calls after uploading the required media. Retry returns the existing submission.
+  rpc SubmitIdentityVerification (SubmitIdentityVerificationRequest) returns (SubmitIdentityVerificationReply);
+  // Identity can poll when Veriff's decision webhook has not arrived. Only a final provider
+  // decision changes KYC; processing responses leave the session open.
+  rpc PollIdentityVerificationDecision (PollIdentityVerificationDecisionRequest) returns (PollIdentityVerificationDecisionReply);
+  // Returns resumable state for one customer-owned identity session.
+  rpc GetIdentityVerificationSession (GetIdentityVerificationSessionRequest) returns (IdentityVerificationSessionDetailsReply);
+
   // A subject's whole KYC standing: the three current tracks, when the standing lapses,
   // and every round ever run against them.
   rpc GetCustomerKycProfile (GetCustomerKycProfileRequest) returns (CustomerKycProfileResponse);
@@ -39,6 +51,101 @@ service ComplianceService {
   // The narrow question — "is this subject verified?" — for a caller that needs an answer
   // rather than a profile.
   rpc GetVerificationStatus (GetVerificationStatusRequest) returns (GetVerificationStatusResponse);
+}
+
+message StartIdentityVerificationRequest {
+  string subject_id = 1;
+  string country_code = 2;
+  KycSubject subject = 3;
+  string callback_url = 4;
+}
+
+message IdentityVerificationSessionReply {
+  string profile_id = 1;
+  string round_id = 2;
+  string session_id = 3;
+  KycVerificationStatus status = 4;
+  string url = 5;
+  repeated IdentityDocumentSide submitted_sides = 6;
+}
+
+message UploadIdentityVerificationDocumentRequest {
+  // Unary upload: content must be 1 byte–10 MiB (10 * 1024 * 1024 bytes).
+  // Accepted content_type values: image/jpeg, image/jpg, image/png, application/pdf.
+  // Identity validates these before calling and configures its gRPC send limit above the
+  // serialized request size; Compliance reserves 11 MiB for protobuf metadata overhead.
+  // Larger files require a separately versioned streaming/chunked contract.
+  string subject_id = 1;
+  string session_id = 2;
+  IdentityDocumentSide side = 3;
+  string document_type = 4;
+  bytes content = 5; // Raw bytes; never base64 or a URL to fetch.
+  string content_type = 6;
+}
+
+message IdentityDocumentReceipt {
+  string session_id = 1;
+  IdentityDocumentSide side = 2;
+  repeated IdentityDocumentSide submitted_sides = 3;
+}
+
+message SubmitIdentityVerificationRequest {
+  string subject_id = 1;
+  string session_id = 2; // Compliance session UUID, not Veriff's provider session id.
+}
+
+message SubmitIdentityVerificationReply {
+  string session_id = 1;
+  KycVerificationStatus status = 2;
+  bool submitted = 3;
+  string submitted_at = 4; // ISO-8601; empty if no submission was recorded.
+}
+
+message PollIdentityVerificationDecisionRequest {
+  string subject_id = 1;
+  string session_id = 2; // Compliance session UUID.
+}
+
+message PollIdentityVerificationDecisionReply {
+  string session_id = 1;
+  KycVerificationStatus status = 2;
+  bool decision_available = 3;
+  bool applied = 4; // False for pending or a decision already recorded by webhook/earlier poll.
+  string decided_at = 5; // ISO-8601; empty while pending.
+  int32 decision_code = 6; // Veriff code; zero when absent.
+  string decision_reason = 7; // Veriff reason; empty when absent.
+}
+
+message GetIdentityVerificationSessionRequest {
+  string subject_id = 1;
+  string session_id = 2; // Compliance session UUID from the profile/start reply.
+}
+
+message IdentityVerificationSessionDetailsReply {
+  string session_id = 1;
+  KycVerificationStatus status = 2;
+  string document_type = 3; // Empty until the first document upload.
+  bool submitted = 4; // True after SubmitIdentityVerification succeeds.
+  string submitted_at = 5; // ISO-8601; empty until submitted.
+  repeated IdentityDocumentSide submitted_sides = 6;
+  repeated IdentityVerificationMediaReply media = 7;
+}
+
+message IdentityVerificationMediaReply {
+  string media_id = 1; // Compliance media UUID, never Veriff's media id.
+  IdentityDocumentSide side = 2;
+  string document_type = 3;
+  bool submitted = 4; // A returned media row has been accepted and recorded.
+  string submitted_at = 5; // ISO-8601.
+  string content_type = 6;
+  int64 size_bytes = 7;
+}
+
+enum IdentityDocumentSide {
+  IDENTITY_DOCUMENT_SIDE_UNSPECIFIED = 0;
+  IDENTITY_DOCUMENT_SIDE_FRONT = 1;
+  IDENTITY_DOCUMENT_SIDE_BACK = 2;
+  IDENTITY_DOCUMENT_SIDE_FACE = 3;
 }
 
 message EvaluateTransactionRequest {
@@ -210,6 +317,9 @@ message CustomerKycProfileResponse {
 
   // A UKVI share code must be cleared before this customer counts as verified.
   bool ukvi_share_code_required = 13;
+
+  // Compliance UUID of the newest non-final Identity session. Empty when none is resumable.
+  string current_identity_session_id = 14;
 }
 
 // Where a customer stands against sanctions and PEP lists.

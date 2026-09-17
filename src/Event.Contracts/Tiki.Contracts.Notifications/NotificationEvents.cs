@@ -93,6 +93,33 @@ public sealed record SmsRequested : NotificationEvent
 }
 
 /// <summary>
+/// Every configured provider for a channel reported failed delivery for one message — the
+/// fallback chain is exhausted. Published by the Notification service itself, not consumed by it.
+/// </summary>
+public sealed record NotificationDeliveryFailed : NotificationEvent
+{
+    /// <summary>"email" or "sms".</summary>
+    public required string Channel { get; init; }
+
+    /// <summary>The original message's recipient — an email address or an E.164 number.</summary>
+    public required string To { get; init; }
+
+    /// <summary>
+    /// Every provider the fallback chain tried, in order, with why each one failed. The last
+    /// entry is what finally exhausted the chain.
+    /// </summary>
+    public required IReadOnlyList<ProviderAttempt> Attempts { get; init; }
+}
+
+/// <summary>One provider's attempt within a <see cref="NotificationDeliveryFailed"/> chain.</summary>
+public sealed record ProviderAttempt
+{
+    public required string Provider { get; init; }
+
+    public required string FailureReason { get; init; }
+}
+
+/// <summary>
 /// The template catalogue. Ids match the file names under the Notification service's
 /// <c>Templates/</c> directory.
 /// </summary>
@@ -100,6 +127,14 @@ public static class EmailTemplates
 {
     /// <summary>Invitation to join the platform — carries the link that sets a first password.</summary>
     public const string TeamMemberInvitation = "team-member-invitation";
+
+    /// <summary>
+    /// A business was created on someone's behalf (e.g. by sales) and needs its owner to set a
+    /// password — carries the onboarding link. Distinct from <see cref="TeamMemberInvitation"/>:
+    /// that one reads as joining an existing team, this one is a business's own account coming
+    /// online for the first time.
+    /// </summary>
+    public const string BusinessInvitation = "business-invitation";
 
     /// <summary>Sent once an invited member has set their password and can sign in.</summary>
     public const string WelcomeOnboarded = "welcome-onboarded";
@@ -140,6 +175,9 @@ public static class EmailModelKeys
     public const string TenantName = "tenantName";
     public const string RoleName = "roleName";
     public const string InvitedByName = "invitedByName";
+
+    /// <summary>The business's own name, for <see cref="EmailTemplates.BusinessInvitation"/>.</summary>
+    public const string BusinessName = "businessName";
 
     /// <summary>Where the request came from, for the "was this you?" line on security emails.</summary>
     public const string RequestIpAddress = "requestIpAddress";
