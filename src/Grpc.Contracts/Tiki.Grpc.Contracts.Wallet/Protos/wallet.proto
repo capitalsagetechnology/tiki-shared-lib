@@ -15,3 +15,31 @@ message PingRequest {
 message PingResponse {
   bool ok = 1;
 }
+
+// Lets an operator pin a specific payout provider for a route instead of leaving it to Wallet's
+// default selection order. Owning service: Wallet.
+service PayoutRoutingService {
+  rpc SetPreferredProvider (SetPreferredProviderRequest) returns (SetPreferredProviderResponse);
+  rpc GetPreferredProvider (GetPreferredProviderRequest) returns (GetPreferredProviderResponse);
+}
+
+message SetPreferredProviderRequest {
+  string source_country = 1;
+  string destination_country = 2;
+  string currency_code = 3;
+  string preferred_provider_name = 4;
+}
+
+message SetPreferredProviderResponse {
+}
+
+message GetPreferredProviderRequest {
+  string source_country = 1;
+  string destination_country = 2;
+  string currency_code = 3;
+}
+
+message GetPreferredProviderResponse {
+  // Empty when no provider has been pinned for this route.
+  string preferred_provider_name = 1;
+}
