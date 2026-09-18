@@ -19,6 +19,15 @@ set the new field see no behavior change.
 
 ## [Unreleased]
 
+### Added — `Tiki.Grpc.Contracts.Wallet` `PayoutRoutingService`
+
+`Tiki.Grpc.Contracts.Wallet`'s previously placeholder `wallet.proto` gains `PayoutRoutingService`,
+Wallet's first real RPCs: `SetPreferredProvider` and `GetPreferredProvider` let an operator pin a
+specific payout provider for a `(source_country, destination_country, currency_code)` route instead
+of leaving the choice to Wallet's own default provider-selection order, backing an admin-bff surface
+for Wallet's new multi-provider payout routing. Additive alongside the existing `Ping` RPC. Advances
+the shared contract family to 0.14.0.
+
 ### Added — resumable identity-verification session state
 
 `CustomerKycProfileResponse.current_identity_session_id` identifies the newest open Identity
@@ -36,26 +45,6 @@ admin surface for reading and changing which provider is primary per channel (em
 configured provider for a channel has failed a message, carrying every provider tried and why.
 Both additive — no existing message, RPC, or field changes. Advances the shared package family to
 0.14.0.
-
-<<<<<<< HEAD
-### Added — resumable identity-verification session state
-
-`CustomerKycProfileResponse.current_identity_session_id` identifies the newest open Identity
-session, and `ComplianceService.GetIdentityVerificationSession` returns that customer-owned
-session's document type, provider-submission state, submitted sides, and non-sensitive media
-metadata. The contract exposes Compliance UUIDs only; provider IDs, storage keys, document bytes,
-and URLs remain private. This additive public contract advances the shared family to 0.14.0.
-=======
-### Added — `Tiki.Grpc.Contracts.Notification` and `NotificationDeliveryFailed`
-
-New package `Tiki.Grpc.Contracts.Notification`, carrying `notification-providers.proto` — the
-admin surface for reading and changing which provider is primary per channel (email/SMS), backing
-`tiki-notification-api`'s dynamic multi-provider fallback. `Tiki.Contracts.Notifications` gains
-`NotificationDeliveryFailed` and its `notification.delivery.failed` topic: published once every
-configured provider for a channel has failed a message, carrying every provider tried and why.
-Both additive — no existing message, RPC, or field changes. Advances the shared package family to
-0.14.0.
->>>>>>> 6c299b5c954d73f06b6cd943e89237a760a9b2c8
 
 ### Added — PollIdentityVerificationDecision
 
