@@ -66,8 +66,7 @@ public static class ModelBuilderExtensions
     /// <param name="modelBuilder">The model builder from <c>OnModelCreating</c>.</param>
     /// <param name="context">The context being built — pass <c>this</c>.</param>
     /// <param name="tenantSelector">
-    /// The context property holding this request's tenant, e.g. <c>c =&gt; c.CurrentTenantScope</c>,
-    /// assigned once in the context's constructor from <c>ServiceContext.TenantId</c>.
+    /// The context member holding this request's tenant, e.g. <c>c =&gt; c.CurrentTenantScope</c>.
     /// </param>
     /// <remarks>
     /// <para>
@@ -79,6 +78,17 @@ public static class ModelBuilderExtensions
     /// parameter is not "matches nothing" to EF, it is constant-folded to <c>FALSE</c> and cached
     /// that way, so use <see cref="Guid.Empty"/> for "no tenant selected" — no row carries it, and
     /// the SQL stays parameterised.
+    /// </para>
+    /// <para>
+    /// <b>Make the member a property that reads the ambient tenant, not a field assigned in the
+    /// constructor</b> — <c>private Guid CurrentTenantScope =&gt; ServiceContext.TenantId ??
+    /// Guid.Empty;</c>. Both shapes parameterise, but a constructor-assigned field is only
+    /// correct while every context instance serves exactly one request, and
+    /// <c>AddPooledDbContextFactory</c> hands the same instance to request after request. Identity
+    /// registers its context that way: each pooled instance was pinned to whichever tenant first
+    /// built it — usually a health check, which carries none — and a business owner's own business
+    /// list came back empty while the row sat there in the right tenant. The other direction is
+    /// the leak this overload exists to close, one borrower's tenant serving the next.
     /// </para>
     /// <para>
     /// <c>IgnoreQueryFilters()</c> remains the one sanctioned escape hatch for a genuinely
