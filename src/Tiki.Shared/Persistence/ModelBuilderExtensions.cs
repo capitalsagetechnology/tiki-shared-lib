@@ -22,11 +22,20 @@ public static class ModelBuilderExtensions
     /// </summary>
     /// <param name="modelBuilder">The model builder from <c>OnModelCreating</c>.</param>
     /// <param name="currentTenantIdAccessor">
-    /// Read once per <c>DbContext</c> instance (at that instance's first query), not once
-    /// at model-build time — pass e.g. <c>() =&gt; ServiceContext.TenantId</c>. This matches
-    /// how a <c>DbContext</c> is actually used: one instance per request/scope, one fixed
-    /// tenant for that instance's whole lifetime — never a value that changes mid-instance,
-    /// so a fresh scoped instance per request is what makes each request see its own tenant.
+    /// Read e.g. <c>() =&gt; ServiceContext.TenantId</c>.
+    /// <para>
+    /// <b>Superseded, and unsafe on a relational provider.</b> Use
+    /// <see cref="ApplyTikiConventions{TContext}(ModelBuilder, TContext, Expression{Func{TContext, Guid}})"/>
+    /// instead. A query filter is part of the model, and the model is built once per process:
+    /// EF evaluates this accessor while <em>compiling</em> a query, writes the answer into the
+    /// SQL as a literal, and caches that SQL against the query's shape. Whichever tenant runs a
+    /// given query first therefore owns it —
+    /// <c>WHERE "TenantId" = '&lt;first tenant&gt;'</c> is then served to every tenant that asks
+    /// afterwards — and a shape first compiled with no tenant selected freezes to
+    /// <c>WHERE FALSE</c> and answers nothing for anybody. Both were reproduced against the
+    /// running platform. The overload below reads the tenant through the context instance, which
+    /// is the shape EF turns into a per-execution parameter.
+    /// </para>
     /// </param>
     /// <remarks>
     /// <c>IgnoreQueryFilters()</c> is the one sanctioned escape hatch for a genuinely
@@ -48,6 +57,85 @@ public static class ModelBuilderExtensions
         }
 
         return modelBuilder;
+    }
+
+    /// <summary>
+    /// The same conventions, with the tenant read through the <c>DbContext</c> instance — which
+    /// is what keeps one tenant's rows out of another tenant's query.
+    /// </summary>
+    /// <param name="modelBuilder">The model builder from <c>OnModelCreating</c>.</param>
+    /// <param name="context">The context being built — pass <c>this</c>.</param>
+    /// <param name="tenantSelector">
+    /// The context member holding this request's tenant, e.g. <c>c =&gt; c.CurrentTenantScope</c>.
+    /// </param>
+    /// <remarks>
+    /// <para>
+    /// Two details carry the whole weight. <b>The value is reached through the context</b>, so EF
+    /// substitutes it per execution (<c>WHERE "TenantId" = $1</c>) instead of compiling it into
+    /// the cached SQL as a literal — the fault in the accessor overload above, which let the
+    /// tenant that compiled a query shape first serve its rows to every tenant that asked next.
+    /// <b>And the value is a non-nullable <see cref="Guid"/></b>: comparing a column to a null
+    /// parameter is not "matches nothing" to EF, it is constant-folded to <c>FALSE</c> and cached
+    /// that way, so use <see cref="Guid.Empty"/> for "no tenant selected" — no row carries it, and
+    /// the SQL stays parameterised.
+    /// </para>
+    /// <para>
+    /// <b>Make the member a property that reads the ambient tenant, not a field assigned in the
+    /// constructor</b> — <c>private Guid CurrentTenantScope =&gt; ServiceContext.TenantId ??
+    /// Guid.Empty;</c>. Both shapes parameterise, but a constructor-assigned field is only
+    /// correct while every context instance serves exactly one request, and
+    /// <c>AddPooledDbContextFactory</c> hands the same instance to request after request. Identity
+    /// registers its context that way: each pooled instance was pinned to whichever tenant first
+    /// built it — usually a health check, which carries none — and a business owner's own business
+    /// list came back empty while the row sat there in the right tenant. The other direction is
+    /// the leak this overload exists to close, one borrower's tenant serving the next.
+    /// </para>
+    /// <para>
+    /// <c>IgnoreQueryFilters()</c> remains the one sanctioned escape hatch for a genuinely
+    /// tenant-spanning admin query, called at the query site so it shows up in review.
+    /// </para>
+    /// </remarks>
+    public static ModelBuilder ApplyTikiConventions<TContext>(
+        this ModelBuilder modelBuilder, TContext context, Expression<Func<TContext, Guid>> tenantSelector)
+        where TContext : DbContext
+    {
+        ArgumentNullException.ThrowIfNull(modelBuilder);
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(tenantSelector);
+
+        // The selector is written against the context type; bind it to this instance, which is
+        // the reference EF recognises and rewrites into a parameter.
+        var currentTenantId = new ContextInstanceRewriter(tenantSelector.Parameters[0], Expression.Constant(context, typeof(TContext)))
+            .Visit(tenantSelector.Body);
+
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            if (!typeof(BaseEntity).IsAssignableFrom(entityType.ClrType) ||
+                entityType.IsOwned() ||
+                entityType.BaseType is not null)
+            {
+                continue;
+            }
+
+            var entityBuilder = modelBuilder.Entity(entityType.ClrType);
+            entityBuilder.HasIndex(nameof(BaseEntity.TenantId));
+
+            var entity = Expression.Parameter(entityType.ClrType, "entity");
+            var body = Expression.AndAlso(
+                Expression.Equal(Expression.Property(entity, nameof(BaseEntity.TenantId)), currentTenantId),
+                Expression.Not(Expression.Property(entity, nameof(BaseEntity.IsDeleted))));
+
+            entityBuilder.HasQueryFilter(Expression.Lambda(body, entity));
+        }
+
+        return modelBuilder;
+    }
+
+    /// <summary>Replaces the selector's context parameter with the context instance itself.</summary>
+    private sealed class ContextInstanceRewriter(ParameterExpression parameter, Expression instance) : ExpressionVisitor
+    {
+        protected override Expression VisitParameter(ParameterExpression node) =>
+            node == parameter ? instance : base.VisitParameter(node);
     }
 
     private static LambdaExpression BuildTenantAndSoftDeleteFilter(Type clrType, Func<Guid?> currentTenantIdAccessor)

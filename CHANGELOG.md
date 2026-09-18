@@ -19,6 +19,15 @@ set the new field see no behavior change.
 
 ## [Unreleased]
 
+### Added — `ComplianceService.GetBusinessKyb` and KYB decision email templates
+
+`GetBusinessKyb` returns a business KYB application as its applicant sees it — the submission,
+uploaded document metadata, and `missing_requirements` still blocking submission — so Identity can
+serve the whole owner journey (read, edit, upload, submit) over the mesh instead of sending owners
+to Compliance's own HTTP API. Identity-only, like the other business KYB RPCs; no analyst material
+is exposed. `EmailTemplates.BusinessKybApproved` and `BusinessKybDeclined` name the emails Identity
+sends when compliance decides. Additive; advances the shared family to 0.15.0.
+
 ### Added — `Tiki.Grpc.Contracts.Wallet` `PayoutRoutingService`
 
 `Tiki.Grpc.Contracts.Wallet`'s previously placeholder `wallet.proto` gains `PayoutRoutingService`,
@@ -26,7 +35,7 @@ Wallet's first real RPCs: `SetPreferredProvider` and `GetPreferredProvider` let 
 specific payout provider for a `(source_country, destination_country, currency_code)` route instead
 of leaving the choice to Wallet's own default provider-selection order, backing an admin-bff surface
 for Wallet's new multi-provider payout routing. Additive alongside the existing `Ping` RPC. Advances
-the shared contract family to 0.14.0.
+the shared contract family to 0.16.0.
 
 ### Added — resumable identity-verification session state
 
