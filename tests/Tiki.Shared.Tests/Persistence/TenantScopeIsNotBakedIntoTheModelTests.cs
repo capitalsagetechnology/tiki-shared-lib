@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Tiki.Shared.Auth;
 using Tiki.Shared.Tests.Persistence.TestSupport;
 using Xunit;
 
@@ -59,6 +60,54 @@ public class TenantScopeIsNotBakedIntoTheModelTests
         Assert.Equal(first, TenantIn(firstContext));
         Assert.Equal(second, TenantIn(secondContext));
     }
+
+    [Fact]
+    public async Task One_reused_context_answers_with_the_tenant_of_the_request_in_hand()
+    {
+        // A pooled context is handed to request after request, so the tenant cannot be captured
+        // when the instance is built: the first borrower is typically a health check with no
+        // tenant at all, and freezing that answers nothing for everybody who borrows it next.
+        // Identity registers its context with AddPooledDbContextFactory and lost a business
+        // owner's own business list to exactly this.
+        var first = Guid.NewGuid();
+        var second = Guid.NewGuid();
+
+        var previous = ServiceContext.TenantId;
+        try
+        {
+            ServiceContext.TenantId = null;
+            await using var context = AmbientContext();
+            context.Widgets.AddRange(
+                new Widget { Id = Guid.NewGuid(), TenantId = first, Name = "first tenant's" },
+                new Widget { Id = Guid.NewGuid(), TenantId = second, Name = "second tenant's" });
+            await context.SaveChangesAsync();
+
+            ServiceContext.TenantId = first;
+            var forFirst = await context.Widgets.AsNoTracking().Select(w => w.Name).ToListAsync();
+
+            // The same instance, back from the pool, serving somebody else.
+            ServiceContext.TenantId = second;
+            var forSecond = await context.Widgets.AsNoTracking().Select(w => w.Name).ToListAsync();
+
+            ServiceContext.TenantId = null;
+            var forNobody = await context.Widgets.AsNoTracking().ToListAsync();
+
+            Assert.Equal(["first tenant's"], forFirst);
+            Assert.Equal(["second tenant's"], forSecond);
+            Assert.Empty(forNobody);
+        }
+        finally
+        {
+            ServiceContext.TenantId = previous;
+        }
+    }
+
+    private static AmbientScopedWidgetDbContext AmbientContext() =>
+        new(new DbContextOptionsBuilder<AmbientScopedWidgetDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
+            .ReplaceService<IModelCacheKeyFactory, UncachedModelCacheKeyFactory>()
+            .Options);
 
     /// <summary>What the filter evaluates to for a given context — the value EF will parameterise.</summary>
     private static Guid TenantIn(ScopedWidgetDbContext context)
