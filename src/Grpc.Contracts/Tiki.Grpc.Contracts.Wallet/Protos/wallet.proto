@@ -24,9 +24,16 @@ service PayoutRoutingService {
 }
 
 message SetPreferredProviderRequest {
+  // ISO 3166-1 alpha-2, upper case (e.g. "NG", "US"). Wallet normalizes on receipt, but a caller
+  // that sends a different case or format for the same route mints a second, silently-distinct
+  // route key - always send the canonical form.
   string source_country = 1;
   string destination_country = 2;
+  // ISO 4217 alpha-3, upper case (e.g. "USD", "NGN") - the same convention Wallet's FX code
+  // already uses elsewhere (see FxRateService.Normalize).
   string currency_code = 3;
+  // A registered IPayoutProvider.Name, e.g. "flutterwave", "corpay" - lower case, ASCII,
+  // hyphen-separated. Case-sensitive: a provider is registered under exactly one name.
   string preferred_provider_name = 4;
 }
 
@@ -34,8 +41,10 @@ message SetPreferredProviderResponse {
 }
 
 message GetPreferredProviderRequest {
+  // Same ISO 3166-1 alpha-2 / upper-case rule as SetPreferredProviderRequest.
   string source_country = 1;
   string destination_country = 2;
+  // Same ISO 4217 alpha-3 / upper-case rule as SetPreferredProviderRequest.
   string currency_code = 3;
 }
 
