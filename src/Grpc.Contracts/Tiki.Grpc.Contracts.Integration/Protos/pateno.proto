@@ -14,6 +14,13 @@ service PatenoService {
   rpc CreateEtransferTransactionWithCustomer (CreateEtransferTransactionWithCustomerRequest) returns (EtransferTransactionReply);
   rpc SearchPayee (SearchPayeeRequest) returns (SearchPayeeReply);
   rpc CreateIndividualBillPayment (CreateIndividualBillPaymentRequest) returns (BillPaymentReply);
+  // Outgoing e-Transfer status lookup. Distinct from SearchIncomingTransfers, which only ever
+  // covers inbound money-send/money-request transactions this account received.
+  rpc SearchEtransferTransaction (SearchEtransferTransactionRequest) returns (SearchEtransferTransactionReply);
+  // Bill-payment status lookup. Pateno's own API requires CustomerNumber + PayeeCode on every
+  // call - there is no "look up by transaction id" filter, so a caller must know which customer
+  // and payee a bill payment belongs to and filter the returned list itself.
+  rpc GetAllBillPaymentList (GetAllBillPaymentListRequest) returns (GetAllBillPaymentListReply);
 }
 
 message CreateEtransferRequestMoneyRequest {
@@ -148,4 +155,64 @@ message CreateIndividualBillPaymentRequest {
 
 message BillPaymentReply {
   int64 transaction_id = 1;
+}
+
+
+// SearchEtransferTransaction: at least one of transaction_id, transaction_reference_number, or
+// interac_reference_number should be supplied - Pateno errors on an unfiltered/too-broad search.
+message SearchEtransferTransactionRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  int64 transaction_id = 3;
+  string transaction_reference_number = 4;
+  string interac_reference_number = 5;
+  string customer_number = 6;
+  string transaction_status_code = 7;
+}
+
+// One matching transaction. transaction_status_code is one of Pateno's documented codes:
+// P Pending, S Sent, E Error, RJ Rejected, C Completed, V Cancelled, U Unapproved,
+// DF Deferred, BL Blocked by Limit Control, IB Insufficient Balance.
+message EtransferTransactionStatus {
+  int64 transaction_id = 1;
+  string transaction_reference_number = 2;
+  string interac_reference_number = 3;
+  string transaction_status_code = 4;
+  string transaction_status_description = 5;
+  string transaction_type_code = 6;
+  string amount = 7;
+  string error_description = 8;
+}
+
+message SearchEtransferTransactionReply {
+  repeated EtransferTransactionStatus transactions = 1;
+}
+
+// GetAllBillPaymentList: customer_number and payee_code are both required by Pateno's own API.
+message GetAllBillPaymentListRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string customer_number = 3;
+  string payee_code = 4;
+  string start_date = 5;
+  string end_date = 6;
+}
+
+// One bill payment row. bill_status is free text - Pateno's own reference only ever shows
+// "Waiting" in its example responses and does not publish an exhaustive enum. "Completed",
+// "Cancelled"/"Canceled" and "Error" are inferred from wording used in the Recurring Bill
+// Payment freeze-validation error messages ("the bill provided is completed/canceled/has
+// experienced an error and cannot be frozen"), not from a documented status table.
+message BillPaymentStatus {
+  int64 id = 1;
+  string transaction_reference_number = 2;
+  string bill_status = 3;
+  string amount = 4;
+  string payee_code = 5;
+  string payee_name = 6;
+  string bill_description = 7;
+}
+
+message GetAllBillPaymentListReply {
+  repeated BillPaymentStatus bills = 1;
 }
