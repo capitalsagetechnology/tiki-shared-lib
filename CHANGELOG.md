@@ -19,6 +19,15 @@ set the new field see no behavior change.
 
 ## [Unreleased]
 
+### Added — `PatenoService.SearchEtransferTransaction` and `GetAllBillPaymentList`
+
+`Tiki.Grpc.Contracts.Integration`'s Pateno proto gains two lookups: `SearchEtransferTransaction`
+(outgoing e-Transfer status, distinct from `SearchIncomingTransfers`, which only ever covers
+inbound money-send/money-request transactions) and `GetAllBillPaymentList` (bill-payment status,
+filtered by the customer/payee pair Pateno's own API requires — it has no lookup-by-transaction-id
+filter). Both additive — no existing message or RPC changes. Advances the shared package family to
+0.18.0.
+
 ### Added — `ComplianceService.GetBusinessKyb` and KYB decision email templates
 
 `GetBusinessKyb` returns a business KYB application as its applicant sees it — the submission,
