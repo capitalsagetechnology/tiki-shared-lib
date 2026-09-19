@@ -169,7 +169,8 @@ public class GeneratedContractShapeTests
         AssertFields<IntegrationNs.PaymentDetails>(
             ("Amount", typeof(string)), ("Currency", typeof(string)), ("TxRef", typeof(string)),
             ("RedirectUrl", typeof(string)), ("Customer", typeof(IntegrationNs.PaymentCustomer)),
-            ("Customizations", typeof(IntegrationNs.PaymentCustomizations)), ("MetaJson", typeof(string)));
+            ("Customizations", typeof(IntegrationNs.PaymentCustomizations)), ("MetaJson", typeof(string)),
+            ("PaymentMethods", typeof(Google.Protobuf.Collections.RepeatedField<IntegrationNs.FlutterwavePaymentMethod>)));
         AssertFields<IntegrationNs.PaymentCustomer>(
             ("Email", typeof(string)), ("PhoneNumber", typeof(string)), ("Name", typeof(string)));
         AssertFields<IntegrationNs.PaymentCustomizations>(
