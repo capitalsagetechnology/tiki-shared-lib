@@ -28,6 +28,34 @@ public class GeneratedContractShapeTests
             typeof(WalletNs.WalletService.WalletServiceBase));
 
     [Fact]
+    public void Wallet_PayoutRouting_contract_generates_both_client_stub_and_service_base() =>
+        AssertGeneratesBoth(
+            typeof(WalletNs.PayoutRoutingService.PayoutRoutingServiceClient),
+            typeof(WalletNs.PayoutRoutingService.PayoutRoutingServiceBase));
+
+    [Theory]
+    [InlineData("SetPreferredProvider")]
+    [InlineData("GetPreferredProvider")]
+    public void Wallet_PayoutRouting_rpc_is_present_on_both_the_stub_and_the_base(string rpcName) =>
+        AssertRpcPresentOnBoth(
+            typeof(WalletNs.PayoutRoutingService.PayoutRoutingServiceClient),
+            typeof(WalletNs.PayoutRoutingService.PayoutRoutingServiceBase),
+            rpcName);
+
+    [Fact]
+    public void Wallet_PayoutRouting_messages_have_the_expected_generated_fields()
+    {
+        AssertFields<WalletNs.SetPreferredProviderRequest>(
+            ("SourceCountry", typeof(string)), ("DestinationCountry", typeof(string)),
+            ("CurrencyCode", typeof(string)), ("PreferredProviderName", typeof(string)));
+        AssertFields<WalletNs.GetPreferredProviderRequest>(
+            ("SourceCountry", typeof(string)), ("DestinationCountry", typeof(string)),
+            ("CurrencyCode", typeof(string)));
+        AssertFields<WalletNs.GetPreferredProviderResponse>(
+            ("PreferredProviderName", typeof(string)));
+    }
+
+    [Fact]
     public void Transaction_contract_generates_both_client_stub_and_service_base() =>
         AssertGeneratesBoth(
             typeof(TransactionNs.TransactionService.TransactionServiceClient),
