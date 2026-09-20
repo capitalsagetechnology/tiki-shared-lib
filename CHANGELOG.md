@@ -19,6 +19,16 @@ set the new field see no behavior change.
 
 ## [Unreleased]
 
+### Added — `FlutterwaveService.InitiatePayment`
+
+`flutterwave.proto` gains `InitiatePayment` (Standard Checkout, `POST /v3/payments`) and its
+`PaymentDetails`/`PaymentCustomer`/`PaymentCustomizations`/`PaymentLinkReply` messages — a
+collection (money coming in against a hosted checkout link), the counterpart to the existing
+transfer RPCs' payouts. `payment_methods` is a `FlutterwavePaymentMethod` enum rather than
+Flutterwave's own comma-separated string, fixed for now pending an admin-facing RPC to manage the
+available set. Additive alongside every existing `FlutterwaveService` RPC. Advances the shared
+contract family to 0.19.0.
+
 ### Added — `ComplianceService.GetBusinessKyb` and KYB decision email templates
 
 `GetBusinessKyb` returns a business KYB application as its applicant sees it — the submission,

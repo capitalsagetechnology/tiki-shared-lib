@@ -152,6 +152,33 @@ public class GeneratedContractShapeTests
             typeof(IntegrationNs.FlutterwaveService.FlutterwaveServiceBase),
             "RefundTransaction");
 
+    /// <summary>Standard Checkout (POST /v3/payments) - a collection, the counterpart to InitiateTransfer's payout.</summary>
+    [Fact]
+    public void Integration_Flutterwave_InitiatePayment_rpc_is_present_on_both_the_stub_and_the_base() =>
+        AssertRpcPresentOnBoth(
+            typeof(IntegrationNs.FlutterwaveService.FlutterwaveServiceClient),
+            typeof(IntegrationNs.FlutterwaveService.FlutterwaveServiceBase),
+            "InitiatePayment");
+
+    [Fact]
+    public void Integration_Flutterwave_payment_messages_have_the_expected_generated_fields()
+    {
+        AssertFields<IntegrationNs.InitiatePaymentRequest>(
+            ("BusinessId", typeof(string)), ("TenantId", typeof(string)),
+            ("Payment", typeof(IntegrationNs.PaymentDetails)));
+        AssertFields<IntegrationNs.PaymentDetails>(
+            ("Amount", typeof(string)), ("Currency", typeof(string)), ("TxRef", typeof(string)),
+            ("RedirectUrl", typeof(string)), ("Customer", typeof(IntegrationNs.PaymentCustomer)),
+            ("Customizations", typeof(IntegrationNs.PaymentCustomizations)), ("MetaJson", typeof(string)),
+            ("PaymentMethods", typeof(Google.Protobuf.Collections.RepeatedField<IntegrationNs.FlutterwavePaymentMethod>)));
+        AssertFields<IntegrationNs.PaymentCustomer>(
+            ("Email", typeof(string)), ("PhoneNumber", typeof(string)), ("Name", typeof(string)));
+        AssertFields<IntegrationNs.PaymentCustomizations>(
+            ("Title", typeof(string)), ("Logo", typeof(string)));
+        AssertFields<IntegrationNs.PaymentLinkReply>(
+            ("Link", typeof(string)), ("TxRef", typeof(string)));
+    }
+
     [Fact]
     public void Integration_ExchangeRates_contract_generates_both_client_stub_and_service_base() =>
         AssertGeneratesBoth(
