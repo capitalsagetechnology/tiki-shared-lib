@@ -37,6 +37,19 @@ Flutterwave's own comma-separated string, fixed for now pending an admin-facing 
 available set. Additive alongside every existing `FlutterwaveService` RPC. Advances the shared
 contract family to 0.19.0.
 
+### Added — Veriff SDK media retrieval
+
+`Tiki.Grpc.Contracts.Integration` adds `VeriffService.ListSessionImages` and the server-streaming
+`VeriffService.DownloadMedia`. Compliance uses these mesh-authenticated operations to copy
+document and face images captured by Veriff's mobile SDK into private platform object storage.
+Video and NFC media are intentionally excluded. The streaming download avoids imposing an
+unbounded binary payload on a unary gRPC call. This additive public contract advances the shared
+package family to 0.22.0.
+
+The same release also carries Veriff's extracted document classification through decision polling:
+document type, issuing country, number, and validity dates. Identity-media replies expose the
+issuing country beside the already returned document type.
+
 ### Added — `ComplianceService.GetBusinessKyb` and KYB decision email templates
 
 `GetBusinessKyb` returns a business KYB application as its applicant sees it — the submission,
@@ -72,6 +85,14 @@ admin surface for reading and changing which provider is primary per channel (em
 configured provider for a channel has failed a message, carrying every provider tried and why.
 Both additive — no existing message, RPC, or field changes. Advances the shared package family to
 0.14.0.
+### Added — `Tiki.Grpc.Contracts.Wallet` `PayoutRoutingService`
+`Tiki.Grpc.Contracts.Wallet`'s previously placeholder `wallet.proto` gains `PayoutRoutingService`,
+Wallet's first real RPCs: `SetPreferredProvider` and `GetPreferredProvider` let an operator pin a
+specific payout provider for a `(source_country, destination_country, currency_code)` route instead
+of leaving the choice to Wallet's own default provider-selection order, backing an admin-bff surface
+for Wallet's new multi-provider payout routing. Additive alongside the existing `Ping` RPC. Advances
+the shared contract family to 0.16.0.
+
 
 ### Added — PollIdentityVerificationDecision
 

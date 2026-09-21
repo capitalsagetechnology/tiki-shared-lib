@@ -113,6 +113,37 @@ public class GeneratedContractShapeTests
             typeof(IntegrationNs.VeriffService.VeriffServiceBase),
             "CreateSession");
 
+    [Theory]
+    [InlineData("ListSessionImages")]
+    [InlineData("DownloadMedia")]
+    public void Integration_Veriff_media_retrieval_rpcs_are_present_on_both_the_stub_and_the_base(string rpcName) =>
+        AssertRpcPresentOnBoth(
+            typeof(IntegrationNs.VeriffService.VeriffServiceClient),
+            typeof(IntegrationNs.VeriffService.VeriffServiceBase),
+            rpcName);
+
+    [Fact]
+    public void Integration_Veriff_media_retrieval_messages_have_the_expected_fields()
+    {
+        AssertFields<IntegrationNs.ListSessionImagesRequest>(
+            ("SessionId", typeof(string)), ("BusinessId", typeof(string)),
+            ("TenantId", typeof(string)), ("Type", typeof(IntegrationNs.VeriffVerificationType)));
+        AssertFields<IntegrationNs.ListSessionImagesReply>(
+            ("Images", typeof(Google.Protobuf.Collections.RepeatedField<IntegrationNs.SessionImage>)));
+        AssertFields<IntegrationNs.SessionImage>(
+            ("Id", typeof(string)), ("Name", typeof(string)), ("Context", typeof(string)),
+            ("Size", typeof(long)), ("Mimetype", typeof(string)), ("SessionId", typeof(string)));
+        AssertFields<IntegrationNs.DownloadMediaRequest>(
+            ("MediaId", typeof(string)), ("SessionId", typeof(string)), ("BusinessId", typeof(string)),
+            ("TenantId", typeof(string)), ("Type", typeof(IntegrationNs.VeriffVerificationType)));
+        AssertFields<IntegrationNs.DownloadMediaChunk>(
+            ("Content", typeof(Google.Protobuf.ByteString)), ("ContentType", typeof(string)));
+        AssertFields<IntegrationNs.DecisionReply>(
+            ("DocumentType", typeof(string)), ("DocumentCountry", typeof(string)),
+            ("DocumentNumber", typeof(string)), ("DocumentValidFrom", typeof(string)),
+            ("DocumentValidUntil", typeof(string)));
+    }
+
     [Fact]
     public void Integration_SmartComply_contract_generates_both_client_stub_and_service_base() =>
         AssertGeneratesBoth(
@@ -382,7 +413,9 @@ public class GeneratedContractShapeTests
             ("MediaId", typeof(string)), ("Side", typeof(ComplianceNs.IdentityDocumentSide)),
             ("DocumentType", typeof(string)), ("Submitted", typeof(bool)),
             ("SubmittedAt", typeof(string)), ("ContentType", typeof(string)),
-            ("SizeBytes", typeof(long)));
+            ("SizeBytes", typeof(long)), ("ReviewStatus", typeof(string)),
+            ("DecisionSource", typeof(string)), ("DecisionReason", typeof(string)),
+            ("DecidedAt", typeof(string)), ("DocumentCountryCode", typeof(string)));
         Assert.Equal(new[] { "Unspecified", "Front", "Back", "Face" },
             Enum.GetNames<ComplianceNs.IdentityDocumentSide>());
     }
