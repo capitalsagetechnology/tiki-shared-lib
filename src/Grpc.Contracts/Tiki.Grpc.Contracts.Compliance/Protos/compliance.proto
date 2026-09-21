@@ -143,6 +143,11 @@ message IdentityVerificationMediaReply {
   string submitted_at = 5; // ISO-8601.
   string content_type = 6;
   int64 size_bytes = 7;
+  string review_status = 8; // Pending, Approved, Declined, ResubmissionRequested.
+  string decision_source = 9; // VeriffWebhook or ComplianceOfficer when decided.
+  string decision_reason = 10;
+  string decided_at = 11; // ISO-8601; empty while pending.
+  string document_country_code = 12; // ISO 3166-1 alpha-2 issuing country.
 }
 
 enum IdentityDocumentSide {
