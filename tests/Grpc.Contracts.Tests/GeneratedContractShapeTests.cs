@@ -180,6 +180,24 @@ public class GeneratedContractShapeTests
     }
 
     [Fact]
+    public void Integration_Flutterwave_transfer_payout_has_type_field()
+    {
+        AssertFields<IntegrationNs.InitiateTransferPayout>(
+            ("Amount", typeof(string)), ("Currency", typeof(string)), ("AccountBank", typeof(string)),
+            ("AccountNumber", typeof(string)), ("DebitSubAccount", typeof(string)), ("Narration", typeof(string)),
+            ("Reference", typeof(string)), ("DebitCurrency", typeof(string)),
+            ("DestinationBranchCode", typeof(string)), ("BeneficiaryName", typeof(string)),
+            ("CallBackUrl", typeof(string)), ("MetaJson", typeof(string)),
+            ("Type", typeof(IntegrationNs.FlutterwaveTransferType)));
+    }
+
+    [Fact]
+    public void Integration_Flutterwave_transfer_type_enum_has_the_specified_members() =>
+        Assert.Equal(
+            new[] { "Unspecified", "BankTransfer", "MobileMoney" },
+            Enum.GetNames<IntegrationNs.FlutterwaveTransferType>());
+
+    [Fact]
     public void Integration_ExchangeRates_contract_generates_both_client_stub_and_service_base() =>
         AssertGeneratesBoth(
             typeof(IntegrationNs.ExchangeRatesService.ExchangeRatesServiceClient),

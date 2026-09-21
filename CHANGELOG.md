@@ -19,6 +19,14 @@ set the new field see no behavior change.
 
 ## [Unreleased]
 
+### Added — `FlutterwaveTransferType` on `InitiateTransferPayout`
+
+`flutterwave.proto`'s `InitiateTransferPayout` gains `type` (`BANK_TRANSFER` or `MOBILE_MONEY`;
+`UNSPECIFIED` defaults to bank transfer). Documents the mobile-money field mapping on the existing
+`account_bank` / `account_number` / `beneficiary_name` / `meta_json` fields — same
+`POST /v3/transfers` endpoint as bank payouts, no new RPC. Additive; advances the shared contract
+family to 0.19.0.
+
 ### Added — `FlutterwaveService.InitiatePayment`
 
 `flutterwave.proto` gains `InitiatePayment` (Standard Checkout, `POST /v3/payments`) and its
