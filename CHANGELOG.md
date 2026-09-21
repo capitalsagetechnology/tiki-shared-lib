@@ -44,7 +44,7 @@ contract family to 0.19.0.
 document and face images captured by Veriff's mobile SDK into private platform object storage.
 Video and NFC media are intentionally excluded. The streaming download avoids imposing an
 unbounded binary payload on a unary gRPC call. This additive public contract advances the shared
-package family to 0.18.0.
+package family to 0.22.0.
 
 The same release also carries Veriff's extracted document classification through decision polling:
 document type, issuing country, number, and validity dates. Identity-media replies expose the
