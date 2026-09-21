@@ -19,6 +19,19 @@ set the new field see no behavior change.
 
 ## [Unreleased]
 
+### Added — Veriff SDK media retrieval
+
+`Tiki.Grpc.Contracts.Integration` adds `VeriffService.ListSessionImages` and the server-streaming
+`VeriffService.DownloadMedia`. Compliance uses these mesh-authenticated operations to copy
+document and face images captured by Veriff's mobile SDK into private platform object storage.
+Video and NFC media are intentionally excluded. The streaming download avoids imposing an
+unbounded binary payload on a unary gRPC call. This additive public contract advances the shared
+package family to 0.18.0.
+
+The same release also carries Veriff's extracted document classification through decision polling:
+document type, issuing country, number, and validity dates. Identity-media replies expose the
+issuing country beside the already returned document type.
+
 ### Added — `ComplianceService.GetBusinessKyb` and KYB decision email templates
 
 `GetBusinessKyb` returns a business KYB application as its applicant sees it — the submission,

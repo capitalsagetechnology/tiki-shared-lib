@@ -85,6 +85,31 @@ public class GeneratedContractShapeTests
             typeof(IntegrationNs.VeriffService.VeriffServiceBase),
             "CreateSession");
 
+    [Theory]
+    [InlineData("ListSessionImages")]
+    [InlineData("DownloadMedia")]
+    public void Integration_Veriff_media_retrieval_rpcs_are_present_on_both_the_stub_and_the_base(string rpcName) =>
+        AssertRpcPresentOnBoth(
+            typeof(IntegrationNs.VeriffService.VeriffServiceClient),
+            typeof(IntegrationNs.VeriffService.VeriffServiceBase),
+            rpcName);
+
+    [Fact]
+    public void Integration_Veriff_media_retrieval_messages_have_the_expected_fields()
+    {
+        AssertFields<IntegrationNs.ListSessionImagesRequest>(
+            ("SessionId", typeof(string)), ("BusinessId", typeof(string)),
+            ("TenantId", typeof(string)), ("Type", typeof(IntegrationNs.VeriffVerificationType)));
+        AssertFields<IntegrationNs.SessionImage>(
+            ("Id", typeof(string)), ("Name", typeof(string)), ("Context", typeof(string)),
+            ("Size", typeof(long)), ("Mimetype", typeof(string)), ("SessionId", typeof(string)));
+        AssertFields<IntegrationNs.DownloadMediaRequest>(
+            ("MediaId", typeof(string)), ("SessionId", typeof(string)), ("BusinessId", typeof(string)),
+            ("TenantId", typeof(string)), ("Type", typeof(IntegrationNs.VeriffVerificationType)));
+        AssertFields<IntegrationNs.DownloadMediaChunk>(
+            ("Content", typeof(Google.Protobuf.ByteString)), ("ContentType", typeof(string)));
+    }
+
     [Fact]
     public void Integration_SmartComply_contract_generates_both_client_stub_and_service_base() =>
         AssertGeneratesBoth(
