@@ -128,6 +128,8 @@ public class GeneratedContractShapeTests
         AssertFields<IntegrationNs.ListSessionImagesRequest>(
             ("SessionId", typeof(string)), ("BusinessId", typeof(string)),
             ("TenantId", typeof(string)), ("Type", typeof(IntegrationNs.VeriffVerificationType)));
+        AssertFields<IntegrationNs.ListSessionImagesReply>(
+            ("Images", typeof(Google.Protobuf.Collections.RepeatedField<IntegrationNs.SessionImage>)));
         AssertFields<IntegrationNs.SessionImage>(
             ("Id", typeof(string)), ("Name", typeof(string)), ("Context", typeof(string)),
             ("Size", typeof(long)), ("Mimetype", typeof(string)), ("SessionId", typeof(string)));
@@ -136,6 +138,10 @@ public class GeneratedContractShapeTests
             ("TenantId", typeof(string)), ("Type", typeof(IntegrationNs.VeriffVerificationType)));
         AssertFields<IntegrationNs.DownloadMediaChunk>(
             ("Content", typeof(Google.Protobuf.ByteString)), ("ContentType", typeof(string)));
+        AssertFields<IntegrationNs.DecisionReply>(
+            ("DocumentType", typeof(string)), ("DocumentCountry", typeof(string)),
+            ("DocumentNumber", typeof(string)), ("DocumentValidFrom", typeof(string)),
+            ("DocumentValidUntil", typeof(string)));
     }
 
     [Fact]
@@ -407,7 +413,9 @@ public class GeneratedContractShapeTests
             ("MediaId", typeof(string)), ("Side", typeof(ComplianceNs.IdentityDocumentSide)),
             ("DocumentType", typeof(string)), ("Submitted", typeof(bool)),
             ("SubmittedAt", typeof(string)), ("ContentType", typeof(string)),
-            ("SizeBytes", typeof(long)));
+            ("SizeBytes", typeof(long)), ("ReviewStatus", typeof(string)),
+            ("DecisionSource", typeof(string)), ("DecisionReason", typeof(string)),
+            ("DecidedAt", typeof(string)), ("DocumentCountryCode", typeof(string)));
         Assert.Equal(new[] { "Unspecified", "Front", "Back", "Face" },
             Enum.GetNames<ComplianceNs.IdentityDocumentSide>());
     }

@@ -50,39 +50,6 @@ The same release also carries Veriff's extracted document classification through
 document type, issuing country, number, and validity dates. Identity-media replies expose the
 issuing country beside the already returned document type.
 
-<<<<<<< HEAD
-### Added — Veriff SDK media retrieval
-
-`Tiki.Grpc.Contracts.Integration` adds `VeriffService.ListSessionImages` and the server-streaming
-`VeriffService.DownloadMedia`. Compliance uses these mesh-authenticated operations to copy
-document and face images captured by Veriff's mobile SDK into private platform object storage.
-Video and NFC media are intentionally excluded. The streaming download avoids imposing an
-unbounded binary payload on a unary gRPC call. This additive public contract advances the shared
-package family to 0.18.0.
-
-The same release also carries Veriff's extracted document classification through decision polling:
-document type, issuing country, number, and validity dates. Identity-media replies expose the
-issuing country beside the already returned document type.
-=======
-### Added — `FlutterwaveTransferType` on `InitiateTransferPayout`
-
-`flutterwave.proto`'s `InitiateTransferPayout` gains `type` (`BANK_TRANSFER` or `MOBILE_MONEY`;
-`UNSPECIFIED` defaults to bank transfer). Documents the mobile-money field mapping on the existing
-`account_bank` / `account_number` / `beneficiary_name` / `meta_json` fields — same
-`POST /v3/transfers` endpoint as bank payouts, no new RPC. Additive; advances the shared contract
-family to 0.19.0.
-
-### Added — `FlutterwaveService.InitiatePayment`
-
-`flutterwave.proto` gains `InitiatePayment` (Standard Checkout, `POST /v3/payments`) and its
-`PaymentDetails`/`PaymentCustomer`/`PaymentCustomizations`/`PaymentLinkReply` messages — a
-collection (money coming in against a hosted checkout link), the counterpart to the existing
-transfer RPCs' payouts. `payment_methods` is a `FlutterwavePaymentMethod` enum rather than
-Flutterwave's own comma-separated string, fixed for now pending an admin-facing RPC to manage the
-available set. Additive alongside every existing `FlutterwaveService` RPC. Advances the shared
-contract family to 0.19.0.
->>>>>>> 6038ece56cef7fbc4afc9bb3484c20bae75b0a49
-
 ### Added — `ComplianceService.GetBusinessKyb` and KYB decision email templates
 
 `GetBusinessKyb` returns a business KYB application as its applicant sees it — the submission,
