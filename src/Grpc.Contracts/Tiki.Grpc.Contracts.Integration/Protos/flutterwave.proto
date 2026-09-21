@@ -12,6 +12,9 @@ service FlutterwaveService {
   rpc InitiateTransfer (InitiateTransferRequest) returns (TransferReply);
   rpc RetryTransfer (RetryTransferRequest) returns (TransferReply);
   rpc GetTransferStatus (GetTransferStatusRequest) returns (TransferReply);
+  // Standard Checkout: POST /v3/payments. A collection, not a payout - money coming in from a
+  // customer, paid against the hosted link this returns, not money going out to a bank account.
+  rpc InitiatePayment (InitiatePaymentRequest) returns (PaymentLinkReply);
   rpc VerifyTransactionById (VerifyTransactionByIdRequest) returns (TransactionVerifyReply);
   rpc VerifyTransactionByReference (VerifyTransactionByReferenceRequest) returns (TransactionVerifyReply);
   rpc RefundTransaction (RefundTransactionRequest) returns (FlutterwaveRefundReply);
@@ -75,19 +78,93 @@ message InitiateTransferRequest {
   InitiateTransferPayout payout = 3;
 }
 
+// Which payout rail the caller intends. Unspecified defaults to bank transfer for backward
+// compatibility. The Integration service validates fields per rail — do not infer the rail from
+// account_bank alone.
+enum FlutterwaveTransferType {
+  FLUTTERWAVE_TRANSFER_TYPE_UNSPECIFIED = 0;
+  FLUTTERWAVE_TRANSFER_TYPE_BANK_TRANSFER = 1;
+  FLUTTERWAVE_TRANSFER_TYPE_MOBILE_MONEY = 2;
+}
+
 message InitiateTransferPayout {
   string amount = 1;
   string currency = 2;
+  // Bank routing code from GET /v3/banks/{country}, or a mobile-money network code when
+  // type = MOBILE_MONEY (e.g. MTN, MPS, AIRTELTIGO, ORANGEMONEY, WAVE).
   string account_bank = 3;
+  // NUBAN for bank transfer, or the recipient mobile number for mobile money (include country
+  // code where required, e.g. 254700000000 or 0700000000 for KES/XAF/XOF).
   string account_number = 4;
   string debit_sub_account = 5;
   string narration = 6;
   string reference = 7;
   string debit_currency = 8;
   string destination_branch_code = 9;
+  // Required when type = MOBILE_MONEY. Optional for most bank corridors.
   string beneficiary_name = 10;
   string call_back_url = 11;
+  // Corridor-specific JSON. Kenya M-Pesa (KES) requires sender, sender_country, and
+  // mobile_number in this object when type = MOBILE_MONEY.
   string meta_json = 12;
+  FlutterwaveTransferType type = 13;
+}
+
+message InitiatePaymentRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  PaymentDetails payment = 3;
+}
+
+message PaymentDetails {
+  string amount = 1;
+  string currency = 2;
+  // Merchant reference. Optional - the handler generates one (same TX-{guid} convention as a
+  // transfer's own Reference) when left empty.
+  string tx_ref = 3;
+  string redirect_url = 4;
+  PaymentCustomer customer = 5;
+  PaymentCustomizations customizations = 6;
+  string meta_json = 7;
+  // Which payment methods the hosted checkout offers - Flutterwave's own "payment_options" field,
+  // a comma-separated string in their API but modeled here as a real enum for now, one value per
+  // method the caller wants enabled (empty means "whatever the merchant account has enabled by
+  // default"). This is deliberately a fixed enum, not an open string list - a future admin-facing
+  // rpc is planned to let staff manage the available set directly instead of each caller guessing
+  // valid values, at which point this may become a lookup by code rather than a compiled enum.
+  repeated FlutterwavePaymentMethod payment_methods = 8;
+}
+
+enum FlutterwavePaymentMethod {
+  FLUTTERWAVE_PAYMENT_METHOD_UNSPECIFIED = 0;
+  FLUTTERWAVE_PAYMENT_METHOD_CARD = 1;
+  FLUTTERWAVE_PAYMENT_METHOD_USSD = 2;
+  FLUTTERWAVE_PAYMENT_METHOD_BANK_TRANSFER = 3;
+  FLUTTERWAVE_PAYMENT_METHOD_ACCOUNT = 4;
+  FLUTTERWAVE_PAYMENT_METHOD_MOBILE_MONEY_GHANA = 5;
+  FLUTTERWAVE_PAYMENT_METHOD_MOBILE_MONEY_RWANDA = 6;
+  FLUTTERWAVE_PAYMENT_METHOD_MOBILE_MONEY_UGANDA = 7;
+  FLUTTERWAVE_PAYMENT_METHOD_MOBILE_MONEY_ZAMBIA = 8;
+  FLUTTERWAVE_PAYMENT_METHOD_MOBILE_MONEY_FRANCOPHONE_AFRICA = 9;
+  FLUTTERWAVE_PAYMENT_METHOD_BARTER = 10;
+}
+
+message PaymentCustomer {
+  string email = 1;
+  string phone_number = 2;
+  string name = 3;
+}
+
+message PaymentCustomizations {
+  string title = 1;
+  string logo = 2;
+}
+
+message PaymentLinkReply {
+  string link = 1;
+  // Echoes back whichever reference was actually used - the caller's own, or the generated one
+  // when none was supplied - since Flutterwave's own /v3/payments response never returns tx_ref.
+  string tx_ref = 2;
 }
 
 message RetryTransferRequest {

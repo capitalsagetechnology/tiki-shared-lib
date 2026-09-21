@@ -28,6 +28,34 @@ public class GeneratedContractShapeTests
             typeof(WalletNs.WalletService.WalletServiceBase));
 
     [Fact]
+    public void Wallet_PayoutRouting_contract_generates_both_client_stub_and_service_base() =>
+        AssertGeneratesBoth(
+            typeof(WalletNs.PayoutRoutingService.PayoutRoutingServiceClient),
+            typeof(WalletNs.PayoutRoutingService.PayoutRoutingServiceBase));
+
+    [Theory]
+    [InlineData("SetPreferredProvider")]
+    [InlineData("GetPreferredProvider")]
+    public void Wallet_PayoutRouting_rpc_is_present_on_both_the_stub_and_the_base(string rpcName) =>
+        AssertRpcPresentOnBoth(
+            typeof(WalletNs.PayoutRoutingService.PayoutRoutingServiceClient),
+            typeof(WalletNs.PayoutRoutingService.PayoutRoutingServiceBase),
+            rpcName);
+
+    [Fact]
+    public void Wallet_PayoutRouting_messages_have_the_expected_generated_fields()
+    {
+        AssertFields<WalletNs.SetPreferredProviderRequest>(
+            ("SourceCountry", typeof(string)), ("DestinationCountry", typeof(string)),
+            ("CurrencyCode", typeof(string)), ("PreferredProviderName", typeof(string)));
+        AssertFields<WalletNs.GetPreferredProviderRequest>(
+            ("SourceCountry", typeof(string)), ("DestinationCountry", typeof(string)),
+            ("CurrencyCode", typeof(string)));
+        AssertFields<WalletNs.GetPreferredProviderResponse>(
+            ("PreferredProviderName", typeof(string)));
+    }
+
+    [Fact]
     public void Transaction_contract_generates_both_client_stub_and_service_base() =>
         AssertGeneratesBoth(
             typeof(TransactionNs.TransactionService.TransactionServiceClient),
@@ -148,6 +176,51 @@ public class GeneratedContractShapeTests
             typeof(IntegrationNs.FlutterwaveService.FlutterwaveServiceClient),
             typeof(IntegrationNs.FlutterwaveService.FlutterwaveServiceBase),
             "RefundTransaction");
+
+    /// <summary>Standard Checkout (POST /v3/payments) - a collection, the counterpart to InitiateTransfer's payout.</summary>
+    [Fact]
+    public void Integration_Flutterwave_InitiatePayment_rpc_is_present_on_both_the_stub_and_the_base() =>
+        AssertRpcPresentOnBoth(
+            typeof(IntegrationNs.FlutterwaveService.FlutterwaveServiceClient),
+            typeof(IntegrationNs.FlutterwaveService.FlutterwaveServiceBase),
+            "InitiatePayment");
+
+    [Fact]
+    public void Integration_Flutterwave_payment_messages_have_the_expected_generated_fields()
+    {
+        AssertFields<IntegrationNs.InitiatePaymentRequest>(
+            ("BusinessId", typeof(string)), ("TenantId", typeof(string)),
+            ("Payment", typeof(IntegrationNs.PaymentDetails)));
+        AssertFields<IntegrationNs.PaymentDetails>(
+            ("Amount", typeof(string)), ("Currency", typeof(string)), ("TxRef", typeof(string)),
+            ("RedirectUrl", typeof(string)), ("Customer", typeof(IntegrationNs.PaymentCustomer)),
+            ("Customizations", typeof(IntegrationNs.PaymentCustomizations)), ("MetaJson", typeof(string)),
+            ("PaymentMethods", typeof(Google.Protobuf.Collections.RepeatedField<IntegrationNs.FlutterwavePaymentMethod>)));
+        AssertFields<IntegrationNs.PaymentCustomer>(
+            ("Email", typeof(string)), ("PhoneNumber", typeof(string)), ("Name", typeof(string)));
+        AssertFields<IntegrationNs.PaymentCustomizations>(
+            ("Title", typeof(string)), ("Logo", typeof(string)));
+        AssertFields<IntegrationNs.PaymentLinkReply>(
+            ("Link", typeof(string)), ("TxRef", typeof(string)));
+    }
+
+    [Fact]
+    public void Integration_Flutterwave_transfer_payout_has_type_field()
+    {
+        AssertFields<IntegrationNs.InitiateTransferPayout>(
+            ("Amount", typeof(string)), ("Currency", typeof(string)), ("AccountBank", typeof(string)),
+            ("AccountNumber", typeof(string)), ("DebitSubAccount", typeof(string)), ("Narration", typeof(string)),
+            ("Reference", typeof(string)), ("DebitCurrency", typeof(string)),
+            ("DestinationBranchCode", typeof(string)), ("BeneficiaryName", typeof(string)),
+            ("CallBackUrl", typeof(string)), ("MetaJson", typeof(string)),
+            ("Type", typeof(IntegrationNs.FlutterwaveTransferType)));
+    }
+
+    [Fact]
+    public void Integration_Flutterwave_transfer_type_enum_has_the_specified_members() =>
+        Assert.Equal(
+            new[] { "Unspecified", "BankTransfer", "MobileMoney" },
+            Enum.GetNames<IntegrationNs.FlutterwaveTransferType>());
 
     [Fact]
     public void Integration_ExchangeRates_contract_generates_both_client_stub_and_service_base() =>
