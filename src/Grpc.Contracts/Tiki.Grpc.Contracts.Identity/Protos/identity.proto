@@ -28,6 +28,9 @@ service IdentityService {
   // --- Customer ---
   rpc GetCustomerById (GetCustomerByIdRequest) returns (CustomerDetails);
   rpc UpdateCustomer (UpdateCustomerRequest) returns (CustomerDetails);
+
+  // --- Transaction ---
+  rpc ValidateTransactionPin (ValidateTransactionPinRequest) returns (ValidateTransactionPinResult);
 }
 
 message PingRequest {
@@ -213,4 +216,13 @@ message CustomerDetails {
   string customer_status = 20;
   string sanction_screening_status = 21;
   string status_update_reason = 22;
+}
+
+message ValidateTransactionPinRequest {
+  string user_id = 1;
+  string pin = 2;
+}
+
+message ValidateTransactionPinResult {
+  bool is_valid = 1;
 }
