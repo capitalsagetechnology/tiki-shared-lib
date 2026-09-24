@@ -25,6 +25,14 @@ service IdentityService {
   rpc GetBusinessOwnerProfile (GetBusinessOwnerProfileRequest) returns (BusinessOwnerProfileDetails);
   rpc UpdateBusinessOwnerProfile (UpdateBusinessOwnerProfileRequest) returns (BusinessOwnerProfileDetails);
 
+  // --- Business ---
+  rpc GetBusinessById (GetBusinessByIdRequest) returns (BusinessDetails);
+  // merchant_id is the code minted at signup from the MERCHANT reference definition — a
+  // stable, human-usable key some callers already hold instead of the business's own id.
+  rpc GetBusinessByMerchantId (GetBusinessByMerchantIdRequest) returns (BusinessDetails);
+  // Every business the user is an accepted team member of, owner or not.
+  rpc GetBusinessesByUserId (GetBusinessesByUserIdRequest) returns (ListBusinessesResponse);
+
   // --- Customer ---
   rpc GetCustomerById (GetCustomerByIdRequest) returns (CustomerDetails);
   rpc UpdateCustomer (UpdateCustomerRequest) returns (CustomerDetails);
@@ -156,6 +164,40 @@ message BusinessOwnerProfileDetails {
   string government_id_url = 10;
   string kyc_status = 11;
   bool profile_completed = 12;
+}
+
+// --- Business ---
+
+message GetBusinessByIdRequest {
+  string business_id = 1;
+}
+
+message GetBusinessByMerchantIdRequest {
+  string merchant_id = 1;
+}
+
+message GetBusinessesByUserIdRequest {
+  string user_id = 1;
+}
+
+message ListBusinessesResponse {
+  repeated BusinessDetails items = 1;
+}
+
+message BusinessDetails {
+  string id = 1;
+  // Empty for a business created before this field existed.
+  string merchant_id = 2;
+  string owner_user_id = 3;
+  string name = 4;
+  string tenant_id = 5;
+  string country_id = 6;
+  // Identity.Domain.Enums.BusinessKycStatus member name, e.g. "InReview".
+  string kyc_status = 7;
+  // Identity.Domain.Enums.BusinessStatus member name, e.g. "Active".
+  string status = 8;
+  string created_at = 9;
+  string updated_at = 10;
 }
 
 // --- Customer ---

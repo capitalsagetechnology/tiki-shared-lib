@@ -79,10 +79,11 @@ public sealed class CachingSessionStore(
         Guid userId,
         IReadOnlyList<string> globalPermissions,
         IReadOnlyDictionary<Guid, TenantGrant> tenantAccess,
+        IReadOnlyDictionary<Guid, BusinessGrant> businessAccess,
         CancellationToken ct = default)
     {
         var sessions = await inner.GetUserSessionsAsync(userId, ct);
-        var updated = await inner.UpdateAccessAsync(userId, globalPermissions, tenantAccess, ct);
+        var updated = await inner.UpdateAccessAsync(userId, globalPermissions, tenantAccess, businessAccess, ct);
 
         foreach (var session in sessions)
             cache.Remove(CacheKey(session.SessionId));

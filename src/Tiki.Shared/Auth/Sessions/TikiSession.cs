@@ -18,6 +18,24 @@ public sealed record TenantGrant
 }
 
 /// <summary>
+/// A user's access to one business: the tenant it belongs to, the role name they hold there,
+/// and the permissions that role expands to.
+/// </summary>
+public sealed record BusinessGrant
+{
+    public required Guid BusinessId { get; init; }
+
+    /// <summary>The tenant this business belongs to — business permissions still fold into that tenant's own grant too.</summary>
+    public required Guid TenantId { get; init; }
+
+    /// <summary>Display only — for a "you are an Admin here" label. Never the basis of a check.</summary>
+    public required IReadOnlyList<string> Roles { get; init; } = [];
+
+    /// <summary>Already expanded (<c>Write</c> implies <c>Read</c>) by Identity at grant time.</summary>
+    public required IReadOnlyList<string> Permissions { get; init; } = [];
+}
+
+/// <summary>
 /// Everything a service needs to authorise a request, held in Redis and keyed by the
 /// <c>sid</c> claim on the access token.
 ///
@@ -71,8 +89,13 @@ public sealed record TikiSession
     /// </summary>
     public Guid? HomeTenantId { get; init; }
 
-    /// <summary>The business a TeamMember is acting for, when applicable.</summary>
-    public Guid? BusinessId { get; init; }
+    /// <summary>
+    /// Every business this user is an accepted, active team member of, keyed by business id.
+    /// A user may belong to more than one business — this cannot collapse to a single id, the
+    /// same reason <see cref="TenantAccess"/> cannot collapse to a single tenant grant.
+    /// </summary>
+    public IReadOnlyDictionary<Guid, BusinessGrant> BusinessAccess { get; init; } =
+        new Dictionary<Guid, BusinessGrant>();
 
     public required DateTimeOffset IssuedAt { get; init; }
 
@@ -146,12 +169,21 @@ public sealed record TikiSession
     }
 
     /// <summary>
-    /// Whether this session — acting for the business on <see cref="BusinessId"/> — holds a
-    /// business permission. Checked against <see cref="HomeTenantId"/> rather than a
-    /// per-request active tenant: a business team member belongs to exactly one tenant and one
-    /// business, so business permissions are folded into that one grant rather than varying by
-    /// which tenant a request happens to select.
+    /// Whether this session holds a business permission for ANY business it belongs to. This is
+    /// the attribute-level check — <c>[RequiresBusinessPermission]</c> has no route to read a
+    /// business id from, so it can only ever answer "holds it somewhere." The route-specific
+    /// question ("holds it for <em>this</em> business") is the businessId overload below, or
+    /// <c>BusinessGrantAuthority.CanManage</c> built on it.
     /// </summary>
     public bool HasBusinessPermission(BusinessModule module, PermissionAction action) =>
-        BusinessId is not null && HasPermission(BusinessPermission.Format(module, action), HomeTenantId);
+        HasBusinessPermission(BusinessPermission.Format(module, action));
+
+    /// <summary>Whether this session holds the given already-formatted business permission for ANY business it belongs to.</summary>
+    public bool HasBusinessPermission(string permission) =>
+        BusinessAccess.Values.Any(g => g.Permissions.Contains(permission, StringComparer.Ordinal));
+
+    /// <summary>Whether this session holds a business permission for this specific business.</summary>
+    public bool HasBusinessPermission(Guid businessId, BusinessModule module, PermissionAction action) =>
+        BusinessAccess.TryGetValue(businessId, out var grant)
+            && grant.Permissions.Contains(BusinessPermission.Format(module, action), StringComparer.Ordinal);
 }

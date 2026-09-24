@@ -14,17 +14,18 @@ public class BusinessPermissionTests
     private static readonly Guid TenantA = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000001");
     private static readonly Guid BusinessA = Guid.Parse("bbbbbbbb-0000-0000-0000-000000000001");
 
-    private static TikiSession Session(IReadOnlyList<string> homeTenantPermissions, Guid? businessId) => new()
+    private static TikiSession Session(IReadOnlyList<string> businessPermissions, Guid? businessId) => new()
     {
         SessionId = Guid.NewGuid(),
         UserId = Guid.NewGuid(),
         UserType = "TeamMember",
         HomeTenantId = TenantA,
-        BusinessId = businessId,
-        TenantAccess = new Dictionary<Guid, TenantGrant>
-        {
-            [TenantA] = new() { TenantId = TenantA, Roles = ["Owner"], Permissions = homeTenantPermissions },
-        },
+        BusinessAccess = businessId is { } id
+            ? new Dictionary<Guid, BusinessGrant>
+            {
+                [id] = new() { BusinessId = id, TenantId = TenantA, Roles = ["Owner"], Permissions = businessPermissions },
+            }
+            : new Dictionary<Guid, BusinessGrant>(),
         IssuedAt = DateTimeOffset.UtcNow,
         ExpiresAt = DateTimeOffset.UtcNow.AddDays(1),
     };
@@ -82,13 +83,15 @@ public class BusinessPermissionTests
     }
 
     [Fact]
-    public void A_session_acting_for_a_business_sees_its_folded_in_permission()
+    public void A_session_acting_for_a_business_sees_its_granted_permission()
     {
         var session = Session(
-            homeTenantPermissions: [BusinessPermission.Format(BusinessModule.Store, PermissionAction.Write)],
+            businessPermissions: [BusinessPermission.Format(BusinessModule.Store, PermissionAction.Write)],
             businessId: BusinessA);
 
+        // The "any business" overload, and the businessId-specific one, must agree.
         Assert.True(session.HasBusinessPermission(BusinessModule.Store, PermissionAction.Write));
+        Assert.True(session.HasBusinessPermission(BusinessA, BusinessModule.Store, PermissionAction.Write));
         // Expansion is materialised at grant time, same as TikiPermission — a session holding
         // only "write" in its stored list is not re-expanded to include "read" on the fly.
         Assert.False(session.HasBusinessPermission(BusinessModule.Cards, PermissionAction.Read));
@@ -97,13 +100,23 @@ public class BusinessPermissionTests
     [Fact]
     public void A_session_with_no_business_never_holds_a_business_permission()
     {
-        // Even if the string happened to be present on the session for some other reason, a
-        // session not acting for any business must not pass a business-permission check — the
-        // BusinessId gate comes first.
         var session = Session(
-            homeTenantPermissions: [BusinessPermission.Format(BusinessModule.Store, PermissionAction.Write)],
+            businessPermissions: [BusinessPermission.Format(BusinessModule.Store, PermissionAction.Write)],
             businessId: null);
 
         Assert.False(session.HasBusinessPermission(BusinessModule.Store, PermissionAction.Write));
+    }
+
+    [Fact]
+    public void The_businessId_overload_does_not_grant_access_to_a_different_business()
+    {
+        var otherBusiness = Guid.Parse("bbbbbbbb-0000-0000-0000-000000000002");
+        var session = Session(
+            businessPermissions: [BusinessPermission.Format(BusinessModule.Store, PermissionAction.Write)],
+            businessId: BusinessA);
+
+        // Holding the permission for BusinessA must not leak into a check for a business the
+        // caller does not belong to at all.
+        Assert.False(session.HasBusinessPermission(otherBusiness, BusinessModule.Store, PermissionAction.Write));
     }
 }
