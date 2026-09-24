@@ -9,11 +9,14 @@ namespace Tiki.Shared.Auth.Authorization;
 /// current request.
 /// </summary>
 /// <remarks>
-/// Business permissions are checked against the session's own home tenant
-/// (<see cref="TikiSession.HasBusinessPermission"/>), not an active tenant selected per request
-/// the way <see cref="PermissionAuthorizationHandler"/> does for Tiki-staff permissions. A
-/// business team member has exactly one home tenant and one business — there is no "which
-/// tenant is this request operating in" question to answer for them.
+/// Checked against every business the session belongs to
+/// (<see cref="TikiSession.HasBusinessPermission(string)"/>), not a single active one — a user
+/// can be a team member of more than one business. This is deliberately the coarse "holds it
+/// somewhere" check: the attribute has no route to read a specific business id from, so it
+/// cannot answer "holds it for <em>this</em> business." That question belongs to the service
+/// layer, via <see cref="BusinessGrantAuthority.CanManage(TikiSession, Guid, BusinessModule, PermissionAction)"/>,
+/// the same way the platform's own <see cref="PermissionAuthorizationHandler"/> only answers "is
+/// this permission held" and leaves tenant-specific decisions to the caller.
 /// </remarks>
 public sealed class BusinessPermissionAuthorizationHandler(
     ISessionAccessor sessionAccessor,
@@ -30,7 +33,7 @@ public sealed class BusinessPermissionAuthorizationHandler(
             return Task.CompletedTask;
         }
 
-        if (session.BusinessId is null)
+        if (session.BusinessAccess.Count == 0)
         {
             logger.LogWarning(
                 "User {UserId} attempted a business-permission check with no business on their session.",
@@ -41,8 +44,8 @@ public sealed class BusinessPermissionAuthorizationHandler(
         }
 
         var granted = requirement.RequireAny
-            ? requirement.Permissions.Any(p => session.HasPermission(p, session.HomeTenantId))
-            : requirement.Permissions.All(p => session.HasPermission(p, session.HomeTenantId));
+            ? requirement.Permissions.Any(session.HasBusinessPermission)
+            : requirement.Permissions.All(session.HasBusinessPermission);
 
         if (granted)
         {
@@ -51,9 +54,8 @@ public sealed class BusinessPermissionAuthorizationHandler(
         else
         {
             logger.LogWarning(
-                "Business permission denied for user {UserId} (business {BusinessId}): required {Mode} of [{Required}].",
+                "Business permission denied for user {UserId}: required {Mode} of [{Required}].",
                 session.UserId,
-                session.BusinessId,
                 requirement.RequireAny ? "any" : "all",
                 string.Join(", ", requirement.Permissions));
 

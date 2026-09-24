@@ -3,9 +3,9 @@ using Microsoft.AspNetCore.Authorization;
 namespace Tiki.Shared.Auth.Authorization;
 
 /// <summary>
-/// Requires the caller's session to be acting for a business
-/// (<see cref="Sessions.TikiSession.BusinessId"/> is set) and to hold a permission on one of
-/// that business's own modules.
+/// Requires the caller's session to be acting for at least one business
+/// (<see cref="Sessions.TikiSession.BusinessAccess"/> is non-empty) and to hold a permission on
+/// one of that business's own modules.
 ///
 /// <code>
 /// [RequiresBusinessPermission(BusinessModule.Store, PermissionAction.Write)]

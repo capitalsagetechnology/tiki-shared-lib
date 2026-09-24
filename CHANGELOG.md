@@ -19,6 +19,45 @@ set the new field see no behavior change.
 
 ## [Unreleased]
 
+### Changed — BREAKING: `TikiSession` carries every business a user belongs to, not one
+
+`TikiSession.BusinessId` is removed. It only ever reflected one business — resolved by an
+unordered `FirstOrDefaultAsync` over a user's accepted team memberships on the Identity side —
+so a user belonging to a second or third business had it silently invisible to every permission
+check. It is replaced by `BusinessAccess`, a `businessId → BusinessGrant` map mirroring
+`TenantAccess`'s existing shape:
+
+```diff
+- public Guid? BusinessId { get; init; }
++ public IReadOnlyDictionary<Guid, BusinessGrant> BusinessAccess { get; init; } = new Dictionary<Guid, BusinessGrant>();
+```
+
+`TikiSession.HasBusinessPermission(module, action)` keeps its signature — it now checks whether
+*any* business the session belongs to grants the permission, which is still the correct
+attribute-level check for `[RequiresBusinessPermission]` (the attribute has no route to read a
+specific business id from). Two new members answer the route-specific question that check
+cannot: `HasBusinessPermission(businessId, module, action)` and the string overload
+`HasBusinessPermission(permission)`.
+
+`ISessionStore.UpdateAccessAsync` gains a `businessAccess` parameter alongside
+`tenantAccess` — both `RedisSessionStore` and `CachingSessionStore` updated. A session already
+in Redis when this ships deserializes with an empty `BusinessAccess` until it is next refreshed
+or expires; not an error, same as any other session-shape change here.
+
+### Added — `BusinessGrantAuthority`
+
+`Tiki.Shared.Auth.Authorization.BusinessGrantAuthority.CanManage` answers "does this caller
+manage business X" — the check `[RequiresBusinessPermission]` cannot make on its own — for any
+service that reads a `TikiSession` out of Redis, not just Identity. Two overloads: a single
+`(module, action)` pair, and an `IEnumerable<BusinessPermission>` form requiring the caller to
+hold every one of them for that business.
+
+### Added — Business lookups on `IdentityService`
+
+`identity.proto` gains `GetBusinessById`, `GetBusinessByMerchantId` (a business's public-facing
+merchant code, minted at signup) and `GetBusinessesByUserId` (every business a user is an
+accepted team member of, owner or not), plus the `BusinessDetails` message. Additive.
+
 ### Added — `FlutterwaveTransferType` on `InitiateTransferPayout`
 
 `flutterwave.proto`'s `InitiateTransferPayout` gains `type` (`BANK_TRANSFER` or `MOBILE_MONEY`;
