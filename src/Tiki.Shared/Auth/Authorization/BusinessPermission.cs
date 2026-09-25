@@ -11,7 +11,7 @@ namespace Tiki.Shared.Auth.Authorization;
 /// The <c>business:</c> prefix keeps these strings from ever colliding with a Tiki-staff
 /// <see cref="TikiPermission"/> in the same permission list — a business team member's session
 /// carries both vocabularies folded into one string set (see
-/// <see cref="Sessions.TikiSession.HasBusinessPermission"/>), and a bare <c>"roles:write"</c>
+/// <see cref="Sessions.TikiSession.HasBusinessPermission(string)"/>), and a bare <c>"roles:write"</c>
 /// would otherwise mean two different things depending on which enum produced it.
 /// </remarks>
 public readonly record struct BusinessPermission(BusinessModule Module, PermissionAction Action)

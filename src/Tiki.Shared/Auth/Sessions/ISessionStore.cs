@@ -44,6 +44,7 @@ public interface ISessionStore
         Guid userId,
         IReadOnlyList<string> globalPermissions,
         IReadOnlyDictionary<Guid, TenantGrant> tenantAccess,
+        IReadOnlyDictionary<Guid, BusinessGrant> businessAccess,
         CancellationToken ct = default);
 
     /// <summary>Extends a session's TTL on activity, for a service that wants sliding expiry.</summary>
