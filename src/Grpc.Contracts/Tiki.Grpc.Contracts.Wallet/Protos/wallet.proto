@@ -57,9 +57,12 @@ message GetPreferredProviderResponse {
 // on behalf of a business that authenticated with an API key — there is no user and no session, so
 // every RPC names its business explicitly and Wallet authorises by that business alone.
 //
-// Wallet resolves the business's tenant from its own records (the wallet owner row), never from
-// the caller's X-Tenant-Id header: that header is outside the service signature, and a business id
-// is only meaningful in the tenant that owns it.
+// Tenant: when the business has a live wallet owner row, that row's tenant is used and a
+// disagreeing X-Tenant-Id is ignored (and logged). When it has none yet — a business still in KYB
+// integrating against sandbox — Wallet uses the tenant business-api sends, which the gateway
+// resolved from the verified API key. The service signature covers only the method name, so the
+// request body and the headers are equally caller-asserted: the trust boundary is the caller, and
+// Wallet accepts no caller but business-api here.
 //
 // Amounts are decimal strings in invariant culture ("1234.50"), never floats: a double cannot hold
 // every amount a ledger can. Timestamps are ISO 8601 UTC strings, as in identity.proto.
@@ -86,6 +89,31 @@ service BusinessApiService {
 
   // Asks the bank-transfer provider who holds an account, before money is sent to it.
   rpc ValidateBankAccount (ValidateBankAccountRequest) returns (ValidateBankAccountResponse);
+
+  // --- Money out -------------------------------------------------------------------------------
+  //
+  // A payment debits the business's account for the environment and pays one destination through
+  // the Compliance payout route for (country, rail). There is no emailed authorisation step: an API
+  // key is a machine caller, so instead Wallet enforces the business's API limits and refuses
+  // anything above them. Sandbox payments are paid by a mock provider from sandbox money only.
+  //
+  // Failures are gRPC statuses carrying a machine-readable code in the "tiki-error-code" trailer:
+  //   INVALID_ARGUMENT     INVALID_REQUEST, INVALID_DESTINATION, INVALID_AMOUNT
+  //   FAILED_PRECONDITION  INSUFFICIENT_FUNDS, LIMIT_EXCEEDED, ROUTE_NOT_SUPPORTED,
+  //                        CURRENCY_NOT_SUPPORTED, BUSINESS_NOT_ACTIVE, QUOTE_FAILED
+  //   ALREADY_EXISTS       REFERENCE_CONFLICT (same client_reference, different request)
+  //   NOT_FOUND            PAYMENT_NOT_FOUND
+
+  // Idempotent on (business_id, environment, client_reference): the same reference with the same
+  // request returns the existing payment and debits nothing; with a different request it is
+  // REFERENCE_CONFLICT.
+  rpc CreatePayment (CreateBusinessPaymentRequest) returns (BusinessPayment);
+
+  // By payment id or by client_reference, within the business and environment.
+  rpc GetPayment (GetBusinessPaymentRequest) returns (BusinessPayment);
+
+  // Newest first.
+  rpc ListPayments (ListBusinessPaymentsRequest) returns (ListBusinessPaymentsResponse);
 }
 
 enum BusinessApiEnvironment {
@@ -224,4 +252,83 @@ message ValidateBankAccountResponse {
   // Present when the provider named the holder.
   string account_name = 2;
   string failure_reason = 3;
+}
+
+message CreateBusinessPaymentRequest {
+  string business_id = 1;
+  BusinessApiEnvironment environment = 2;
+  // The caller's reference for this payment, 1-100 characters. The idempotency key.
+  string client_reference = 3;
+  // The API key that asked, for the audit trail and per-key reporting.
+  string api_key_id = 4;
+  // Destination country, ISO 3166-1 alpha-2.
+  string country_code = 5;
+  // A Compliance payout rail: "BankTransfer", "MobileMoney", "Interac" or "Spei".
+  string rail = 6;
+  // What the recipient receives, in payout_currency.
+  string amount = 7;
+  string payout_currency = 8;
+  // The account debited; empty means payout_currency. When it differs, Wallet converts through its
+  // FX pricing (the business's rate where one applies) and debits the funding equivalent.
+  string funding_currency = 9;
+  // The route's destination fields, by the keys Compliance defines for (country, rail), e.g.
+  // bankCode/accountNumber/accountName for NG BankTransfer.
+  map<string, string> destination = 10;
+  string narration = 11;
+}
+
+message GetBusinessPaymentRequest {
+  string business_id = 1;
+  BusinessApiEnvironment environment = 2;
+  oneof key {
+    string payment_id = 3;
+    string client_reference = 4;
+  }
+}
+
+message BusinessPayment {
+  string id = 1;
+  string client_reference = 2;
+  BusinessApiEnvironment environment = 3;
+  // A BusinessPaymentStatus name: "Pending", "Processing", "Completed", "Failed", "Cancelled".
+  string status = 4;
+  string rail = 5;
+  string country_code = 6;
+  string payout_currency = 7;
+  string payout_amount = 8;
+  string funding_currency = 9;
+  string funding_amount = 10;
+  // Funding → payout; "1" when no conversion.
+  string exchange_rate = 11;
+  string fee_amount = 12;
+  map<string, string> destination = 13;
+  string narration = 14;
+  string provider_reference = 15;
+  string failure_code = 16;
+  string failure_reason = 17;
+  string api_key_id = 18;
+  string created_at = 19;
+  string updated_at = 20;
+  // Empty until the payment reaches Completed.
+  string completed_at = 21;
+}
+
+message ListBusinessPaymentsRequest {
+  string business_id = 1;
+  BusinessApiEnvironment environment = 2;
+  // A status name; empty means every status.
+  string status = 3;
+  // ISO 4217 payout currency; empty means every currency.
+  string currency_code = 4;
+  // ISO 8601 bounds on created_at; empty means unbounded.
+  string from = 5;
+  string to = 6;
+  // 1-based; page size is clamped to 1..200.
+  int32 page = 7;
+  int32 page_size = 8;
+}
+
+message ListBusinessPaymentsResponse {
+  repeated BusinessPayment payments = 1;
+  int64 total_count = 2;
 }

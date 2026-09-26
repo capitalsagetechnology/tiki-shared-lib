@@ -51,9 +51,64 @@ public sealed record BusinessEnvironmentActivatedEvent : BusinessEvent
     public required string EnvironmentType { get; init; }
 }
 
+/// <summary>
+/// A business payment moved to a new status. Published by Wallet on
+/// <see cref="BusinessTopics.BusinessPaymentEvents"/> for every payment, however it was started,
+/// so the business API can turn it into the integrator's webhook and the console can show it live.
+/// </summary>
+/// <remarks>
+/// Carries the payment's state in full rather than a pointer to it: a webhook sent minutes later
+/// must describe the payment as it was at this change, not as it is when the consumer gets round
+/// to asking.
+/// </remarks>
+public sealed record BusinessPaymentStatusChangedEvent : BusinessEvent
+{
+    public override string EventType => BusinessEventTypes.PaymentStatusChanged;
+
+    public required Guid PaymentId { get; init; }
+
+    /// <summary>The caller's reference (for API payments, the business API's client reference).</summary>
+    public required string Reference { get; init; }
+
+    /// <summary><c>Sandbox</c> or <c>Live</c>.</summary>
+    public required string Environment { get; init; }
+
+    /// <summary>A BusinessPaymentStatus name, before and after.</summary>
+    public string? PreviousStatus { get; init; }
+
+    public required string Status { get; init; }
+
+    /// <summary>"BankTransfer", "MobileMoney", "Interac" or "Spei".</summary>
+    public required string Rail { get; init; }
+
+    public required string CountryCode { get; init; }
+
+    public required decimal PayoutAmount { get; init; }
+
+    public required string PayoutCurrency { get; init; }
+
+    public required decimal FundingAmount { get; init; }
+
+    public required string FundingCurrency { get; init; }
+
+    public decimal FeeAmount { get; init; }
+
+    public string? ProviderReference { get; init; }
+
+    public string? FailureCode { get; init; }
+
+    public string? FailureReason { get; init; }
+
+    /// <summary>Set when an API key started the payment; null for a console payment.</summary>
+    public Guid? ApiKeyId { get; init; }
+
+    public required DateTimeOffset OccurredAt { get; init; }
+}
+
 /// <summary>The business event types published on <see cref="BusinessTopics.BusinessEvents"/>.</summary>
 public static class BusinessEventTypes
 {
     public const string Signup = "business.signup";
     public const string EnvironmentActivated = "business.environmentActivated";
+    public const string PaymentStatusChanged = "business.payment.statusChanged";
 }
