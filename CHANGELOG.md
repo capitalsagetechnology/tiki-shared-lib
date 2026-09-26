@@ -5,6 +5,15 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
+## [0.27.0] — 2026-09-26
+
+### Added — `ListBusinessPaymentsRequest.funding_currency`
+
+Filters business payments by the currency of the account debited, alongside the existing
+`currency_code` (the payout currency). The business API needs it for Chimoney's
+`filters.debitCurrency`. The same filter is exposed on Wallet's own business and console lists.
+Additive: an unset field means every funding currency, as before.
+
 ## [0.26.0] — 2026-09-26
 
 ### Added — business payments on `BusinessApiService`, and their status event
