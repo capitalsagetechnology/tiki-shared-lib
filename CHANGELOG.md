@@ -5,6 +5,23 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
+## [0.25.0] — 2026-09-26
+
+### Added — `BusinessApiService` in `Tiki.Grpc.Contracts.Wallet`
+
+Wallet's first real gRPC surface, used only by tiki-business-api on behalf of a business that
+authenticated with an API key. There is no user and no session on these calls, so every RPC names
+its business explicitly, and Wallet resolves the tenant from its own wallet-owner row rather than
+from the unsigned `X-Tenant-Id` header. Read-only in this release:
+
+- `ListAccounts` / `ListLedgerEntries` — per environment. `SANDBOX` provisions and funds the
+  business's separate sandbox accounts on first use; sandbox and live never mix.
+- `GetEffectiveRates` — through Wallet's FX pricing, business rates included.
+- `ListBanks`, `ListMobileMoneyNetworks`, `ValidateBankAccount` — payout reference data.
+
+Amounts are decimal strings and timestamps ISO 8601 strings. Additive: `WalletService` and
+`PayoutRoutingService` are unchanged.
+
 ## [0.24.0] — 2026-09-26
 
 ### Added — business API keys (`Tiki.Shared.Auth.ApiKeys`)
