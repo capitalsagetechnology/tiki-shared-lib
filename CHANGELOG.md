@@ -5,6 +5,28 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
+## [0.24.0] — 2026-09-26
+
+### Added — business API keys (`Tiki.Shared.Auth.ApiKeys`)
+
+The Chimoney-compatible business API authenticates with an `X-API-KEY` header, not a JWT. Keys
+follow the session model: Identity projects every active key into Redis and the gateway reads
+that projection, so Identity is never called on the request path.
+
+- `ApiKeyGrant` — what the gateway needs to decide a request: business, tenant, environment,
+  origin (Tiki-issued or imported from the legacy platform), whether API access is enabled,
+  an optional IP allowlist and an end date for rolled keys.
+- `IApiKeyStore` / `RedisApiKeyStore` — `tiki:apikey:{hash}`, a per-business index so a
+  re-projection deletes revoked keys atomically, and a last-used timestamp per key.
+- `ApiKeyHasher` — HMAC-SHA256 under a shared pepper (`Tiki:ApiKeys:Pepper`, at least 32
+  characters). Format-agnostic, so legacy keys without an `sk_` prefix resolve.
+- `AddTikiApiKeys(configuration)` registers all three. Identity and the gateway both call it.
+- `TikiHeaderNames.BusinessId`, `ApiKeyId`, `ApiEnvironment` (gateway ➜ business API, all in
+  `StrippedFromClient`) and `ApiKey` (`X-API-KEY`).
+
+Additive. A service that never calls `AddTikiApiKeys` is unaffected; the only behaviour change
+elsewhere is that the gateway now strips three more client headers.
+
 ## [0.8.1] — 2026-09-11
 
 ### Added — `EmailRequested.FromDisplayNameOverride`
