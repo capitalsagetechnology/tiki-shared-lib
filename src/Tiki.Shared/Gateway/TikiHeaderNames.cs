@@ -41,6 +41,26 @@ public static class TikiHeaderNames
     /// <summary>The end user's session/token id (<c>jti</c>), so a service can check revocation.</summary>
     public const string AuthSessionId = "X-Auth-Session-Id";
 
+    // --- Business API identity (gateway ➜ tiki-business-api) --------------------------
+
+    /// <summary>
+    /// The business an <c>X-API-KEY</c> request acts for, resolved by the gateway from the key.
+    /// Trusted; always in <see cref="StrippedFromClient"/>.
+    /// </summary>
+    public const string BusinessId = "X-Business-Id";
+
+    /// <summary>Id of the API key that authenticated the request — never the key itself.</summary>
+    public const string ApiKeyId = "X-Api-Key-Id";
+
+    /// <summary>
+    /// <c>Sandbox</c> or <c>Live</c>: the environment of the public host the request arrived on,
+    /// which the gateway has already checked matches the key's own.
+    /// </summary>
+    public const string ApiEnvironment = "X-Api-Environment";
+
+    /// <summary>The header the business API authenticates with, named as its integrators send it.</summary>
+    public const string ApiKey = "X-API-KEY";
+
     // --- Service-to-service authentication --------------------------------------------
 
     /// <summary>Id of the service that signed this request, e.g. <c>api-gateway</c>, <c>wallet-service</c>.</summary>
@@ -133,5 +153,10 @@ public static class TikiHeaderNames
         // so nothing downstream should see the raw request — a service that read this instead
         // of the stamped header would be trusting client input again.
         SelectTenant,
+
+        // Business API identity: a client that could set these would act as any business.
+        BusinessId,
+        ApiKeyId,
+        ApiEnvironment,
     ];
 }
