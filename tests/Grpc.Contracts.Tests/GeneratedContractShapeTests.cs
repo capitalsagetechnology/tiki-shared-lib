@@ -42,6 +42,19 @@ public class GeneratedContractShapeTests
             typeof(WalletNs.PayoutRoutingService.PayoutRoutingServiceBase),
             rpcName);
 
+    [Theory]
+    [InlineData("ListAccounts")]
+    [InlineData("ListLedgerEntries")]
+    [InlineData("GetEffectiveRates")]
+    [InlineData("ListBanks")]
+    [InlineData("ListMobileMoneyNetworks")]
+    [InlineData("ValidateBankAccount")]
+    public void Wallet_BusinessApi_rpc_is_present_on_both_the_stub_and_the_base(string rpcName) =>
+        AssertRpcPresentOnBoth(
+            typeof(WalletNs.BusinessApiService.BusinessApiServiceClient),
+            typeof(WalletNs.BusinessApiService.BusinessApiServiceBase),
+            rpcName);
+
     [Fact]
     public void Wallet_PayoutRouting_messages_have_the_expected_generated_fields()
     {

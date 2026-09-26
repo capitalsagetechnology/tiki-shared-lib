@@ -52,3 +52,176 @@ message GetPreferredProviderResponse {
   // Empty when no provider has been pinned for this route.
   string preferred_provider_name = 1;
 }
+
+// The business API's window onto Wallet. Owning service: Wallet. Called only by tiki-business-api,
+// on behalf of a business that authenticated with an API key — there is no user and no session, so
+// every RPC names its business explicitly and Wallet authorises by that business alone.
+//
+// Wallet resolves the business's tenant from its own records (the wallet owner row), never from
+// the caller's X-Tenant-Id header: that header is outside the service signature, and a business id
+// is only meaningful in the tenant that owns it.
+//
+// Amounts are decimal strings in invariant culture ("1234.50"), never floats: a double cannot hold
+// every amount a ledger can. Timestamps are ISO 8601 UTC strings, as in identity.proto.
+service BusinessApiService {
+  // The business's spendable accounts, one per currency. In SANDBOX, Wallet provisions the
+  // business's sandbox accounts on first use and funds them with test money; sandbox and live
+  // accounts are separate ledgers and never appear in each other's answers.
+  rpc ListAccounts (ListBusinessAccountsRequest) returns (ListBusinessAccountsResponse);
+
+  // Ledger lines on the business's accounts, newest first.
+  rpc ListLedgerEntries (ListBusinessLedgerEntriesRequest) returns (ListBusinessLedgerEntriesResponse);
+
+  // The rate this business would get for each pair right now, through Wallet's FX pricing — the
+  // business's negotiated rate where one applies. Pairs Wallet cannot price are left out of the
+  // answer rather than failing the call.
+  rpc GetEffectiveRates (GetEffectiveRatesRequest) returns (GetEffectiveRatesResponse);
+
+  // Banks a payout can reach in a country. MX answers from the SPEI directory, others from the
+  // bank-transfer provider.
+  rpc ListBanks (ListBanksRequest) returns (ListBanksResponse);
+
+  // Mobile-money networks a payout can reach. Empty currency means every supported currency.
+  rpc ListMobileMoneyNetworks (ListMobileMoneyNetworksRequest) returns (ListMobileMoneyNetworksResponse);
+
+  // Asks the bank-transfer provider who holds an account, before money is sent to it.
+  rpc ValidateBankAccount (ValidateBankAccountRequest) returns (ValidateBankAccountResponse);
+}
+
+enum BusinessApiEnvironment {
+  BUSINESS_API_ENVIRONMENT_UNSPECIFIED = 0;
+  BUSINESS_API_ENVIRONMENT_SANDBOX = 1;
+  BUSINESS_API_ENVIRONMENT_LIVE = 2;
+}
+
+message ListBusinessAccountsRequest {
+  string business_id = 1;
+  BusinessApiEnvironment environment = 2;
+}
+
+message BusinessAccount {
+  // The ledger account — the stable id of "this business's money in this currency".
+  string account_id = 1;
+  // ISO 4217 alpha-3, upper case.
+  string currency_code = 2;
+  string balance = 3;
+  string account_number = 4;
+  bool is_active = 5;
+  // Empty for a tenant that keeps business money on the ledger without a wallet.
+  string wallet_id = 6;
+  string wallet_account_id = 7;
+}
+
+message ListBusinessAccountsResponse {
+  repeated BusinessAccount accounts = 1;
+}
+
+message ListBusinessLedgerEntriesRequest {
+  string business_id = 1;
+  BusinessApiEnvironment environment = 2;
+  // Empty means every account the business holds in this environment.
+  string account_id = 3;
+  // ISO 4217; empty means every currency.
+  string currency_code = 4;
+  // ISO 8601; empty means unbounded.
+  string from = 5;
+  string to = 6;
+  // 1-based. Page size is clamped to 1..200 by Wallet.
+  int32 page = 7;
+  int32 page_size = 8;
+}
+
+message BusinessLedgerEntry {
+  string id = 1;
+  string posted_at = 2;
+  // "Debit" or "Credit", from the business's side.
+  string direction = 3;
+  string amount = 4;
+  string currency_code = 5;
+  string balance_before = 6;
+  string balance_after = 7;
+  // A LedgerTransactionType name, e.g. "PayoutReservation", "PayIn".
+  string type = 8;
+  string description = 9;
+  string reference = 10;
+  string account_id = 11;
+}
+
+message ListBusinessLedgerEntriesResponse {
+  repeated BusinessLedgerEntry entries = 1;
+  int64 total_count = 2;
+}
+
+message CurrencyPair {
+  // ISO 4217 alpha-3, upper case. The rate answers "one base buys how much quote".
+  string base_currency = 1;
+  string quote_currency = 2;
+}
+
+message GetEffectiveRatesRequest {
+  string business_id = 1;
+  repeated CurrencyPair pairs = 2;
+}
+
+message EffectiveRate {
+  string base_currency = 1;
+  string quote_currency = 2;
+  // The rate the business gets, markup included.
+  string rate = 3;
+  string retrieved_at = 4;
+  string expires_at = 5;
+}
+
+message GetEffectiveRatesResponse {
+  repeated EffectiveRate rates = 1;
+}
+
+message ListBanksRequest {
+  // ISO 3166-1 alpha-2, upper case.
+  string country_code = 1;
+}
+
+message Bank {
+  // Numeric where the provider has one; 0 where it does not (SPEI).
+  int32 id = 1;
+  string code = 2;
+  string name = 3;
+}
+
+message ListBanksResponse {
+  repeated Bank banks = 1;
+}
+
+message ListMobileMoneyNetworksRequest {
+  // ISO 4217; empty means every currency Wallet can pay out by mobile money.
+  string currency_code = 1;
+}
+
+message MobileMoneyNetwork {
+  // The network code a payout names, e.g. "MPS", "MTN".
+  string code = 1;
+  string name = 2;
+  string currency_code = 3;
+  // ISO 3166-1 alpha-2.
+  string country_code = 4;
+}
+
+message ListMobileMoneyNetworksResponse {
+  repeated MobileMoneyNetwork networks = 1;
+}
+
+message ValidateBankAccountRequest {
+  // ISO 3166-1 alpha-2.
+  string country_code = 1;
+  // The bank code from ListBanks.
+  string bank_code = 2;
+  string account_number = 3;
+}
+
+message ValidateBankAccountResponse {
+  // "Valid", "Invalid" or "Unknown" (provider could not say).
+  string status = 1;
+  // Present when the provider named the holder.
+  string account_name = 2;
+  string failure_reason = 3;
+}
