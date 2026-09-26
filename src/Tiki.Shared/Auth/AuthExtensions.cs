@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using StackExchange.Redis;
+using Tiki.Shared.Auth.ApiKeys;
 using Tiki.Shared.Auth.Sessions;
 
 namespace Tiki.Shared.Auth;
@@ -34,6 +35,35 @@ public static class AuthExtensions
             sp.GetRequiredService<RedisSessionStore>(),
             sp.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>(),
             sp.GetRequiredService<IOptions<SessionOptions>>()));
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registers the Redis projection of business API keys and the hasher that addresses it.
+    /// Identity writes the projection; the gateway reads it on every <c>X-API-KEY</c> request.
+    /// </summary>
+    /// <remarks>
+    /// Both sides call this one method so they cannot disagree on the pepper or the key shapes —
+    /// a mismatch there would not fail loudly, it would make every key "not valid".
+    /// </remarks>
+    public static IServiceCollection AddTikiApiKeys(this IServiceCollection services, IConfiguration configuration)
+    {
+        var redisConnectionString = configuration["Tiki:Caching:RedisConnectionString"]
+            ?? configuration.GetConnectionString("Redis")
+            ?? throw new InvalidOperationException(
+                "API keys require Redis. Set 'Tiki:Caching:RedisConnectionString' or 'ConnectionStrings:Redis'.");
+
+        services.AddOptions<ApiKeyOptions>()
+            .Bind(configuration.GetSection(ApiKeyOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services.TryAddTimeProvider();
+        services.TryAddRedis(redisConnectionString);
+
+        services.AddSingleton<ApiKeyHasher>();
+        services.AddSingleton<IApiKeyStore, RedisApiKeyStore>();
 
         return services;
     }
