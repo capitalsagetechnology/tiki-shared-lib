@@ -14,4 +14,11 @@ namespace Tiki.Contracts.Business;
 public static class BusinessTopics
 {
     public const string BusinessEvents = "business.events";
+
+    /// <summary>
+    /// Wallet's business payment lifecycle: one <see cref="BusinessPaymentStatusChangedEvent"/>
+    /// per status change, keyed by business id so one business's payments stay in order. Its own
+    /// topic because Wallet, not Identity, owns it — the single-topic rule above is Identity's.
+    /// </summary>
+    public const string BusinessPaymentEvents = "wallet.business-payment.events";
 }

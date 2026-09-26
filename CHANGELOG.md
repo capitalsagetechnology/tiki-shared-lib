@@ -5,6 +5,27 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
+## [0.26.0] — 2026-09-26
+
+### Added — business payments on `BusinessApiService`, and their status event
+
+- `CreatePayment`, `GetPayment`, `ListPayments` on Wallet's `BusinessApiService`. A payment debits
+  the business's account for the environment and pays one destination through the Compliance
+  route for (country, rail). No emailed authorisation code: the caller is an API key, so Wallet
+  enforces the business's API limits instead and refuses anything above them (`LIMIT_EXCEEDED`).
+  Idempotent on (business, environment, client_reference). Failures carry a machine-readable code
+  in the `tiki-error-code` trailer; the codes are listed in wallet.proto.
+- `BusinessPaymentStatusChangedEvent` (`business.payment.statusChanged`) on the new topic
+  `BusinessTopics.BusinessPaymentEvents` (`wallet.business-payment.events`), keyed by business id.
+
+### Fixed — the tenant rule described in 0.25.0
+
+0.25.0 said Wallet never takes the tenant from the caller's `X-Tenant-Id`. It does when the
+business has no live wallet yet (a business in KYB using sandbox): the wallet owner row wins when
+it exists, business-api's tenant is used otherwise. The service signature covers only the method
+name, so the caller — which must be business-api — is the trust boundary. Comment-only in
+wallet.proto; no behaviour in the package changed.
+
 ## [0.25.0] — 2026-09-26
 
 ### Added — `BusinessApiService` in `Tiki.Grpc.Contracts.Wallet`
