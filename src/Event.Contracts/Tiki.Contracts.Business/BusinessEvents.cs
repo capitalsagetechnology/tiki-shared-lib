@@ -105,10 +105,63 @@ public sealed record BusinessPaymentStatusChangedEvent : BusinessEvent
     public required DateTimeOffset OccurredAt { get; init; }
 }
 
+/// <summary>
+/// A business pay-in moved to a new status. Published by Wallet on
+/// <see cref="BusinessTopics.BusinessPaymentEvents"/> alongside payment status changes, keyed by
+/// business id, so the business API can send <c>chimoney.payment.completed</c>.
+/// </summary>
+public sealed record BusinessPayInStatusChangedEvent : BusinessEvent
+{
+    public override string EventType => BusinessEventTypes.PayInStatusChanged;
+
+    public required Guid PayInId { get; init; }
+
+    /// <summary>The caller's client reference.</summary>
+    public required string Reference { get; init; }
+
+    /// <summary><c>Sandbox</c> or <c>Live</c>.</summary>
+    public required string Environment { get; init; }
+
+    /// <summary><c>InteracRequest</c> or <c>CardLink</c>.</summary>
+    public required string Method { get; init; }
+
+    public string? PreviousStatus { get; init; }
+
+    /// <summary>Pending, Paid, Failed, Expired or Cancelled.</summary>
+    public required string Status { get; init; }
+
+    public required decimal Amount { get; init; }
+
+    public required string Currency { get; init; }
+
+    public decimal? CreditedAmount { get; init; }
+
+    public string? CreditedCurrency { get; init; }
+
+    public decimal FeeAmount { get; init; }
+
+    public string? PayerEmail { get; init; }
+
+    public string? PayerName { get; init; }
+
+    public Guid? SubAccountId { get; init; }
+
+    public string? ProviderReference { get; init; }
+
+    public string? FailureCode { get; init; }
+
+    public string? FailureReason { get; init; }
+
+    public Guid? ApiKeyId { get; init; }
+
+    public required DateTimeOffset OccurredAt { get; init; }
+}
+
 /// <summary>The business event types published on <see cref="BusinessTopics.BusinessEvents"/>.</summary>
 public static class BusinessEventTypes
 {
     public const string Signup = "business.signup";
     public const string EnvironmentActivated = "business.environmentActivated";
     public const string PaymentStatusChanged = "business.payment.statusChanged";
+    public const string PayInStatusChanged = "business.payin.statusChanged";
 }

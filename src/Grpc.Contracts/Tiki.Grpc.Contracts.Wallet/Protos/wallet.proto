@@ -145,6 +145,34 @@ service BusinessApiService {
   // (business_id, environment, client_reference) like CreatePayment. Not a payout: nothing leaves
   // the business, so API limits do not apply.
   rpc CreateInternalTransfer (InternalTransferRequest) returns (InternalTransfer);
+
+  // --- Pay-ins (money in) -----------------------------------------------------------------------
+  //
+  // A pay-in asks a payer to send the business money through a provider (Interac request-money
+  // for CAD, a Flutterwave card/bank link for NGN) and credits the business's main account — or
+  // the given sub-account — when the provider confirms it. Settlement reuses Wallet's deposit
+  // path, so a payment that arrives after the pay-in expired or was cancelled is still credited:
+  // money that arrived is never dropped. Sandbox pay-ins call no provider and stay Pending until
+  // SimulatePayIn decides them.
+  //
+  // Additional codes in the "tiki-error-code" trailer:
+  //   INVALID_ARGUMENT     METHOD_NOT_SUPPORTED
+  //   FAILED_PRECONDITION  PAYIN_NOT_CANCELLABLE, PROVIDER_DECLINED
+  //   NOT_FOUND            PAYIN_NOT_FOUND
+
+  // Idempotent on (business_id, environment, client_reference), like CreatePayment.
+  rpc CreatePayIn (CreatePayInRequest) returns (PayIn);
+  rpc GetPayIn (GetPayInRequest) returns (PayIn);
+  // Newest first.
+  rpc ListPayIns (ListPayInsRequest) returns (ListPayInsResponse);
+  // Pending only. The provider's request is left to lapse; a late payment still settles as Paid.
+  rpc CancelPayIn (CancelPayInRequest) returns (PayIn);
+  // Sandbox pay-ins only: decides a Pending pay-in as the payer's provider would have.
+  rpc SimulatePayIn (SimulatePayInRequest) returns (PayIn);
+  // Where to send a bank transfer or Interac e-Transfer by hand — no pay-in is created and nothing
+  // is tracked; the credit arrives through the Console's approval flow. Live values; in SANDBOX
+  // the answer is a clearly marked sample.
+  rpc GetPayInInstructions (GetPayInInstructionsRequest) returns (PayInInstructions);
 }
 
 enum BusinessApiEnvironment {
@@ -467,4 +495,129 @@ message InternalTransfer {
   string destination_amount = 8;
   string rate = 9;
   string created_at = 10;
+}
+
+enum PayInMethod {
+  PAY_IN_METHOD_UNSPECIFIED = 0;
+  // Interac e-Transfer request-money (Pateno). CAD.
+  PAY_IN_METHOD_INTERAC_REQUEST = 1;
+  // Flutterwave hosted card/bank payment link. NGN.
+  PAY_IN_METHOD_CARD_LINK = 2;
+}
+
+message PayInPayer {
+  string email = 1;
+  string name = 2;
+  // E.164, optional.
+  string phone = 3;
+}
+
+message CreatePayInRequest {
+  string business_id = 1;
+  BusinessApiEnvironment environment = 2;
+  // 1-100 characters. The idempotency key.
+  string client_reference = 3;
+  string api_key_id = 4;
+  PayInMethod method = 5;
+  // What the payer is asked to send, in `currency`.
+  string amount = 6;
+  string currency = 7;
+  PayInPayer payer = 8;
+  // Where the payer lands after a card/bank link payment. Ignored for Interac.
+  string redirect_url = 9;
+  string narration = 10;
+  // Empty: credit the business's main account. Set: credit that sub-account's account in `currency`.
+  string sub_account_id = 11;
+  // 0 means Wallet's default (24 hours).
+  int32 expires_in_seconds = 12;
+}
+
+message GetPayInRequest {
+  string business_id = 1;
+  BusinessApiEnvironment environment = 2;
+  oneof key {
+    string pay_in_id = 3;
+    string client_reference = 4;
+  }
+}
+
+message ListPayInsRequest {
+  string business_id = 1;
+  BusinessApiEnvironment environment = 2;
+  // A status name; empty means every status.
+  string status = 3;
+  string currency = 4;
+  string from = 5;
+  string to = 6;
+  string sub_account_id = 7;
+  int32 page = 8;
+  int32 page_size = 9;
+}
+
+message ListPayInsResponse {
+  repeated PayIn pay_ins = 1;
+  int64 total_count = 2;
+}
+
+message CancelPayInRequest {
+  string business_id = 1;
+  BusinessApiEnvironment environment = 2;
+  string pay_in_id = 3;
+}
+
+message SimulatePayInRequest {
+  string business_id = 1;
+  string pay_in_id = 2;
+  // "paid", "failed", "expired" or "fraud".
+  string outcome = 3;
+}
+
+message PayIn {
+  string id = 1;
+  string client_reference = 2;
+  BusinessApiEnvironment environment = 3;
+  PayInMethod method = 4;
+  // "Pending", "Paid", "Failed", "Expired" or "Cancelled".
+  string status = 5;
+  string amount = 6;
+  string currency = 7;
+  // What reached the business's account once Paid (after any provider fee); empty before.
+  string credited_amount = 8;
+  string credited_currency = 9;
+  string fee_amount = 10;
+  // The link the payer opens (card link, Interac gateway); empty in sandbox.
+  string payment_url = 11;
+  string provider_reference = 12;
+  PayInPayer payer = 13;
+  string sub_account_id = 14;
+  string failure_code = 15;
+  string failure_reason = 16;
+  string narration = 17;
+  string api_key_id = 18;
+  string expires_at = 19;
+  string paid_at = 20;
+  string created_at = 21;
+  string updated_at = 22;
+}
+
+message GetPayInInstructionsRequest {
+  string business_id = 1;
+  BusinessApiEnvironment environment = 2;
+  // "USD" (bank transfer) or "CAD" (Interac e-Transfer to email).
+  string currency = 3;
+}
+
+message PayInInstructions {
+  string currency = 1;
+  string bank_name = 2;
+  string account_number = 3;
+  string routing_number = 4;
+  // What the sender must quote so the credit can be matched: the business's merchant ID.
+  string reference = 5;
+  // CAD only: the address to send the Interac e-Transfer to.
+  string interac_email = 6;
+  // A plain sentence for the payer.
+  string notes = 7;
+  // True in SANDBOX: the values are samples and nothing sent there is credited.
+  bool sample = 8;
 }

@@ -64,6 +64,12 @@ public class GeneratedContractShapeTests
     [InlineData("CloseSubAccountWallets")]
     [InlineData("QuoteInternalTransfer")]
     [InlineData("CreateInternalTransfer")]
+    [InlineData("CreatePayIn")]
+    [InlineData("GetPayIn")]
+    [InlineData("ListPayIns")]
+    [InlineData("CancelPayIn")]
+    [InlineData("SimulatePayIn")]
+    [InlineData("GetPayInInstructions")]
     public void Wallet_BusinessApi_rpc_is_present_on_both_the_stub_and_the_base(string rpcName) =>
         AssertRpcPresentOnBoth(
             typeof(WalletNs.BusinessApiService.BusinessApiServiceClient),

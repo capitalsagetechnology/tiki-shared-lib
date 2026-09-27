@@ -5,6 +5,21 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
+## [0.30.0] — 2026-09-27
+
+### Added — pay-ins on `BusinessApiService`, and their status event
+
+- `CreatePayIn`, `GetPayIn`, `ListPayIns`, `CancelPayIn`, `SimulatePayIn` (sandbox only),
+  `GetPayInInstructions`. A pay-in asks a payer to send the business money — Interac request-money
+  (CAD) or a Flutterwave card/bank link (NGN) — and credits the main account or a sub-account when
+  the provider confirms. Idempotent on the client reference. A payment arriving after expiry or
+  cancellation is still credited. USD bank transfer and Interac e-Transfer-to-email are
+  instructions only (`GetPayInInstructions`): nothing is created or tracked.
+- `BusinessPayInStatusChangedEvent` (`business.payin.statusChanged`) on
+  `BusinessTopics.BusinessPaymentEvents`.
+
+Additive.
+
 ## [0.29.0] — 2026-09-27
 
 ### Added — sub-accounts on `BusinessApiService`
