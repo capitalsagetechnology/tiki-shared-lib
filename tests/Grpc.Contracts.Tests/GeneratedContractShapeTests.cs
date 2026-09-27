@@ -70,6 +70,8 @@ public class GeneratedContractShapeTests
     [InlineData("CancelPayIn")]
     [InlineData("SimulatePayIn")]
     [InlineData("GetPayInInstructions")]
+    [InlineData("ListBankBranches")]
+    [InlineData("EstimateFees")]
     public void Wallet_BusinessApi_rpc_is_present_on_both_the_stub_and_the_base(string rpcName) =>
         AssertRpcPresentOnBoth(
             typeof(WalletNs.BusinessApiService.BusinessApiServiceClient),

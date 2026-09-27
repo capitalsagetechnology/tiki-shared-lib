@@ -173,6 +173,17 @@ service BusinessApiService {
   // is tracked; the credit arrives through the Console's approval flow. Live values; in SANDBOX
   // the answer is a clearly marked sample.
   rpc GetPayInInstructions (GetPayInInstructionsRequest) returns (PayInInstructions);
+
+  // --- Reference data (continued) -----------------------------------------------------------------
+
+  // Branches of a bank from ListBanks (by its numeric id), for countries whose bank transfers need
+  // a branch code. Empty when the provider has none for that bank.
+  rpc ListBankBranches (ListBankBranchesRequest) returns (ListBankBranchesResponse);
+
+  // What Tiki would charge on an amount for a rail and direction, from the pricing Wallet actually
+  // applies — so it can honestly be zero where nothing is charged (business payouts today carry only
+  // the FX spread). rail_fee is what the provider charges on top, where known.
+  rpc EstimateFees (EstimateFeesRequest) returns (FeeEstimate);
 }
 
 enum BusinessApiEnvironment {
@@ -620,4 +631,47 @@ message PayInInstructions {
   string notes = 7;
   // True in SANDBOX: the values are samples and nothing sent there is credited.
   bool sample = 8;
+}
+
+message ListBankBranchesRequest {
+  // Bank.id from ListBanks.
+  int32 bank_id = 1;
+}
+
+message BankBranch {
+  int32 id = 1;
+  string branch_code = 2;
+  string branch_name = 3;
+  string swift_code = 4;
+  string bic = 5;
+  int32 bank_id = 6;
+}
+
+message ListBankBranchesResponse {
+  repeated BankBranch branches = 1;
+}
+
+message EstimateFeesRequest {
+  string business_id = 1;
+  BusinessApiEnvironment environment = 2;
+  string amount = 3;
+  string currency = 4;
+  // "BankTransfer", "MobileMoney", "Interac", "Spei" (payouts) or "InteracRequest", "CardLink" (pay-ins).
+  string rail = 5;
+  // "payout" or "funding".
+  string direction = 6;
+}
+
+message FeeEstimate {
+  string amount = 1;
+  string currency = 2;
+  string rail = 3;
+  string direction = 4;
+  string platform_fee = 5;
+  string rail_fee = 6;
+  string total_fee = 7;
+  // Funding: what reaches the account (amount − total_fee). Payout: what is debited (amount + total_fee).
+  string net_amount = 8;
+  // A plain sentence on how the figure was reached.
+  string note = 9;
 }
