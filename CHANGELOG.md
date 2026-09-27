@@ -5,6 +5,23 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
+## [0.36.0] — 2026-09-27
+
+### Added — a pay-in chooses the account it is credited to
+
+- Wallet `BusinessApiService`: `CreatePayInRequest.account_currency` (13) — the business's own (or
+  the sub-account's) account credited, in the request's environment. The payer still pays in
+  `currency`; when the two differ the pay-in settles in `currency` and the net is converted at the
+  business's rate when the money arrives. Empty keeps today's default (the `currency` account, else
+  USD live). New refusal `ACCOUNT_NOT_FOUND` (NOT_FOUND); `SUBACCOUNT_WALLET_NOT_FOUND` and
+  `QUOTE_FAILED` as before. For tiki-business-api (`payment/initiate`'s `walletID`) and
+  tiki-wallet-api.
+- wallet.proto comments only: the `Wallet` payment rail (payouts/wallet: `destination["receiver"]`,
+  optional `country_code`) and its `RECEIVER_NOT_FOUND` (NOT_FOUND) / `RECEIVER_NOT_ACTIVE`
+  (FAILED_PRECONDITION) codes, which Wallet already sends.
+
+Additive.
+
 ## [0.35.0] — 2026-09-27
 
 ### Added — business customers on `IdentityService`, and paying on a customer's behalf

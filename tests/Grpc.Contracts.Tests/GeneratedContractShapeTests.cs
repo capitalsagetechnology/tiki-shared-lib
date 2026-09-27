@@ -65,6 +65,14 @@ public class GeneratedContractShapeTests
     public void Identity_BusinessDetails_carries_the_fee_model() =>
         AssertFields<IdentityNs.BusinessDetails>(("FeeModel", typeof(string)));
 
+    /// <summary>0.36.0: a pay-in names the account it is credited to; field 13 on the wire.</summary>
+    [Fact]
+    public void Wallet_CreatePayInRequest_names_the_account_credited()
+    {
+        AssertFields<WalletNs.CreatePayInRequest>(("AccountCurrency", typeof(string)));
+        Assert.Equal(13, WalletNs.CreatePayInRequest.AccountCurrencyFieldNumber);
+    }
+
     [Theory]
     [InlineData("ListAccounts")]
     [InlineData("ListLedgerEntries")]

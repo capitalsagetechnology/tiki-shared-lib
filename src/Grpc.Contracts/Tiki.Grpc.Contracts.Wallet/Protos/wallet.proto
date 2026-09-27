@@ -101,9 +101,15 @@ service BusinessApiService {
   //   INVALID_ARGUMENT     INVALID_REQUEST, INVALID_DESTINATION, INVALID_AMOUNT
   //   FAILED_PRECONDITION  INSUFFICIENT_FUNDS, LIMIT_EXCEEDED, ROUTE_NOT_SUPPORTED,
   //                        CURRENCY_NOT_SUPPORTED, BUSINESS_NOT_ACTIVE, QUOTE_FAILED,
-  //                        CUSTOMER_NOT_FOUND, CUSTOMER_NOT_VERIFIED, CUSTOMER_ARCHIVED
+  //                        CUSTOMER_NOT_FOUND, CUSTOMER_NOT_VERIFIED, CUSTOMER_ARCHIVED,
+  //                        RECEIVER_NOT_ACTIVE (rail "Wallet": the business paid is not verified,
+  //                        suspended or closed)
   //   ALREADY_EXISTS       REFERENCE_CONFLICT (same client_reference, different request)
-  //   NOT_FOUND            PAYMENT_NOT_FOUND
+  //   NOT_FOUND            PAYMENT_NOT_FOUND,
+  //                        RECEIVER_NOT_FOUND (rail "Wallet": no business in the payer's tenant
+  //                        answers to the receiver, or it holds no account in payout_currency in the
+  //                        environment — one answer for all three, so other tenants' businesses
+  //                        cannot be probed)
 
   // Idempotent on (business_id, environment, client_reference): the same reference with the same
   // request returns the existing payment and debits nothing; with a different request it is
@@ -151,7 +157,8 @@ service BusinessApiService {
   //
   // A pay-in asks a payer to send the business money through a provider (Interac request-money
   // for CAD, a Flutterwave card/bank link for NGN) and credits the business's main account — or
-  // the given sub-account — when the provider confirms it. Settlement reuses Wallet's deposit
+  // the given sub-account — in the account CreatePayInRequest.account_currency picks, when the
+  // provider confirms it. Settlement reuses Wallet's deposit
   // path, so a payment that arrives after the pay-in expired or was cancelled is still credited:
   // money that arrived is never dropped. Sandbox pay-ins call no provider and stay Pending until
   // SimulatePayIn decides them.
@@ -159,7 +166,8 @@ service BusinessApiService {
   // Additional codes in the "tiki-error-code" trailer:
   //   INVALID_ARGUMENT     METHOD_NOT_SUPPORTED
   //   FAILED_PRECONDITION  PAYIN_NOT_CANCELLABLE, PROVIDER_DECLINED
-  //   NOT_FOUND            PAYIN_NOT_FOUND
+  //   NOT_FOUND            PAYIN_NOT_FOUND, ACCOUNT_NOT_FOUND (account_currency names no account of
+  //                        the business in the environment), SUBACCOUNT_WALLET_NOT_FOUND
 
   // Idempotent on (business_id, environment, client_reference), like CreatePayment.
   rpc CreatePayIn (CreatePayInRequest) returns (PayIn);
@@ -342,7 +350,11 @@ message CreateBusinessPaymentRequest {
   string api_key_id = 4;
   // Destination country, ISO 3166-1 alpha-2.
   string country_code = 5;
-  // A Compliance payout rail: "BankTransfer", "MobileMoney", "Interac" or "Spei".
+  // A Compliance payout rail: "BankTransfer", "MobileMoney", "Interac" or "Spei" — or "Wallet":
+  // another Tiki business in the payer's tenant, paid on the ledger with no provider (live money
+  // into its live wallet, sandbox into its sandbox wallet). A Wallet payment names the payee in
+  // destination["receiver"] (its business id or merchant id), may leave country_code empty (the
+  // payee's is used), is priced by fee rules on rail "Wallet" and is born Completed.
   string rail = 6;
   // What the recipient receives, in payout_currency.
   string amount = 7;
@@ -551,10 +563,20 @@ message CreatePayInRequest {
   // Where the payer lands after a card/bank link payment. Ignored for Interac.
   string redirect_url = 9;
   string narration = 10;
-  // Empty: credit the business's main account. Set: credit that sub-account's account in `currency`.
+  // Empty: credit the business's main account. Set: credit that sub-account's account (in
+  // account_currency, else `currency`).
   string sub_account_id = 11;
   // 0 means Wallet's default (24 hours).
   int32 expires_in_seconds = 12;
+  // ISO 4217: the account credited — the business's own (or sub_account_id's) account in this
+  // currency in the request's environment. When it differs from `currency` the payer still pays in
+  // `currency`; the pay-in settles in it and what is left after the fee and tax is converted at the
+  // business's rate when the money arrives (the rate at creation is indicative only). No such
+  // account: NOT_FOUND ACCOUNT_NOT_FOUND (main) or SUBACCOUNT_WALLET_NOT_FOUND (sub-account); no
+  // rate for the pair right now: FAILED_PRECONDITION QUOTE_FAILED.
+  // Empty: today's default — the account in `currency`; live, when the business holds none, its
+  // USD account (converted as above).
+  string account_currency = 13;
 }
 
 message GetPayInRequest {
