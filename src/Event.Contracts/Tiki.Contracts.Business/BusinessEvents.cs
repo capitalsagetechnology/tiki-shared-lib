@@ -102,6 +102,17 @@ public sealed record BusinessPaymentStatusChangedEvent : BusinessEvent
     /// <summary>Set when an API key started the payment; null for a console payment.</summary>
     public Guid? ApiKeyId { get; init; }
 
+    /// <summary>
+    /// The business's customer the payment was made on behalf of (its originator), for monitoring
+    /// and the integrator's records; null when the business paid for itself. Name and country are
+    /// as they were when the payment was made.
+    /// </summary>
+    public Guid? CustomerId { get; init; }
+
+    public string? CustomerName { get; init; }
+
+    public string? CustomerCountry { get; init; }
+
     public required DateTimeOffset OccurredAt { get; init; }
 }
 
