@@ -46,6 +46,41 @@ service IdentityService {
   // the answer carries the signing secret in plaintext. The secret is stored encrypted and is
   // decrypted for this call alone; callers cache it briefly and never persist it.
   rpc GetBusinessWebhook (GetBusinessWebhookRequest) returns (BusinessWebhook);
+
+  // --- Business customers ---
+  // A business's own customers: people it pays on behalf of. Not users — no credentials, never
+  // log in — and never Tiki customers. Scoped to (business, environment): a sandbox key never
+  // sees a live customer. The business-web console manages them over Identity's REST API; these
+  // RPCs are for tiki-business-api (all of them) and tiki-wallet-api (Get and Claim only).
+  //
+  // Failures carry a machine-readable code in the "tiki-error-code" trailer:
+  //   INVALID_ARGUMENT     INVALID_REQUEST
+  //   NOT_FOUND            CUSTOMER_NOT_FOUND (also: another business's, or the other environment's)
+  //   ALREADY_EXISTS       CUSTOMER_EMAIL_TAKEN (email unique per business + environment among
+  //                        customers that are not archived)
+  //   FAILED_PRECONDITION  CUSTOMER_HAS_PAYMENTS (delete once a payment named it: archive instead),
+  //                        CUSTOMER_ARCHIVED, CUSTOMER_NOT_VERIFIED (KYC not approved),
+  //                        CONTACT_CHANGED (the verified address is no longer the customer's)
+  rpc CreateBusinessCustomer (CreateBusinessCustomerRequest) returns (BusinessCustomer);
+  // Archived customers included, so history and old payments still resolve.
+  rpc GetBusinessCustomer (GetBusinessCustomerRequest) returns (BusinessCustomer);
+  // Newest first. Archived customers only with include_archived.
+  rpc ListBusinessCustomers (ListBusinessCustomersRequest) returns (ListBusinessCustomersResponse);
+  // Changing the email (or phone) clears its verification. An archived customer cannot change.
+  rpc UpdateBusinessCustomer (UpdateBusinessCustomerRequest) returns (BusinessCustomer);
+  // Removes the customer for good, only while no payment has named it (CUSTOMER_HAS_PAYMENTS).
+  rpc DeleteBusinessCustomer (DeleteBusinessCustomerRequest) returns (DeleteBusinessCustomerResponse);
+  // Hidden from lists and pickers and refused on new payments; kept for history. Idempotent.
+  rpc ArchiveBusinessCustomer (ArchiveBusinessCustomerRequest) returns (BusinessCustomer);
+  // The customer's identity verification as Compliance reported it (subject "bcust:{id}").
+  // A status for an older verification than the current one is ignored.
+  rpc RecordBusinessCustomerKyc (RecordBusinessCustomerKycRequest) returns (BusinessCustomer);
+  // A one-time code sent to the customer's email or phone was confirmed.
+  rpc MarkBusinessCustomerContactVerified (MarkBusinessCustomerContactVerifiedRequest) returns (BusinessCustomer);
+  // Wallet, before a payment names the customer as its originator: refuses unless the customer
+  // belongs to the business in that environment, is KYC-approved and not archived, and from then
+  // on the customer can only be archived (DeleteBusinessCustomer answers CUSTOMER_HAS_PAYMENTS).
+  rpc ClaimBusinessCustomerForPayment (ClaimBusinessCustomerForPaymentRequest) returns (BusinessCustomer);
 }
 
 message PingRequest {
@@ -309,4 +344,131 @@ message BusinessWebhook {
   // False when the business may not use the API in this environment (suspended, or live before
   // KYB approval): deliveries are then held rather than sent.
   bool api_access_enabled = 5;
+}
+
+// --- Business customers ---
+
+message BusinessCustomer {
+  string id = 1;
+  string business_id = 2;
+  string tenant_id = 3;
+  BusinessApiEnvironment environment = 4;
+  string first_name = 5;
+  string last_name = 6;
+  // As given, lower-cased; empty when none.
+  string email = 7;
+  // E.164; empty when none.
+  string phone_number = 8;
+  // ISO 3166-1 alpha-2 of where the customer lives; picks the KYC provider.
+  string country_iso2 = 9;
+  // The caller's own JSON object, verbatim ("{}" by default).
+  string meta_json = 10;
+  // A BusinessCustomerKycStatus name: "NotStarted", "InProgress", "Approved", "Declined",
+  // "ResubmissionRequested", "Expired", "Abandoned" (Compliance's verification statuses).
+  string kyc_status = 11;
+  // Compliance's current verification session id (or the business API's sandbox id); empty until one opens.
+  string kyc_verification_id = 12;
+  // ISO 8601; empty until KYC starts.
+  string kyc_updated_at = 13;
+  // ISO 8601; empty while unverified. Cleared when the address changes.
+  string email_verified_at = 14;
+  string phone_verified_at = 15;
+  // ISO 8601; empty while not archived.
+  string archived_at = 16;
+  string created_at = 17;
+  string updated_at = 18;
+  // True once a payment has named the customer: it can then only be archived, never deleted.
+  bool has_payments = 19;
+}
+
+message CreateBusinessCustomerRequest {
+  string business_id = 1;
+  BusinessApiEnvironment environment = 2;
+  string first_name = 3;
+  string last_name = 4;
+  string email = 5;
+  string phone_number = 6;
+  string country_iso2 = 7;
+  // Empty means "{}".
+  string meta_json = 8;
+}
+
+message GetBusinessCustomerRequest {
+  string business_id = 1;
+  BusinessApiEnvironment environment = 2;
+  string customer_id = 3;
+}
+
+message ListBusinessCustomersRequest {
+  string business_id = 1;
+  BusinessApiEnvironment environment = 2;
+  // A BusinessCustomerKycStatus name; empty means every status.
+  string kyc_status = 3;
+  // Exact, case-insensitive; empty means any.
+  string email = 4;
+  bool include_archived = 5;
+  // 1-based; page size is clamped to 1..200.
+  int32 page = 6;
+  int32 page_size = 7;
+}
+
+message ListBusinessCustomersResponse {
+  repeated BusinessCustomer customers = 1;
+  int64 total_count = 2;
+}
+
+// Unset fields are left as they are; a set empty string clears email or phone_number.
+message UpdateBusinessCustomerRequest {
+  string business_id = 1;
+  BusinessApiEnvironment environment = 2;
+  string customer_id = 3;
+  optional string first_name = 4;
+  optional string last_name = 5;
+  optional string email = 6;
+  optional string phone_number = 7;
+  optional string country_iso2 = 8;
+  optional string meta_json = 9;
+}
+
+message DeleteBusinessCustomerRequest {
+  string business_id = 1;
+  BusinessApiEnvironment environment = 2;
+  string customer_id = 3;
+}
+
+message DeleteBusinessCustomerResponse {
+}
+
+message ArchiveBusinessCustomerRequest {
+  string business_id = 1;
+  BusinessApiEnvironment environment = 2;
+  string customer_id = 3;
+}
+
+message RecordBusinessCustomerKycRequest {
+  string business_id = 1;
+  BusinessApiEnvironment environment = 2;
+  string customer_id = 3;
+  string verification_id = 4;
+  // A BusinessCustomerKycStatus name.
+  string kyc_status = 5;
+  // True when verification_id is a new session replacing the current one (a start or a retry);
+  // false for a status of the current session, which is ignored if another session is current.
+  bool new_session = 6;
+}
+
+message MarkBusinessCustomerContactVerifiedRequest {
+  string business_id = 1;
+  BusinessApiEnvironment environment = 2;
+  string customer_id = 3;
+  // "email" or "sms".
+  string channel = 4;
+  // The address the code went to; must still be the customer's (else CONTACT_CHANGED).
+  string destination = 5;
+}
+
+message ClaimBusinessCustomerForPaymentRequest {
+  string business_id = 1;
+  BusinessApiEnvironment environment = 2;
+  string customer_id = 3;
 }

@@ -5,6 +5,24 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
+## [0.35.0] — 2026-09-27
+
+### Added — business customers on `IdentityService`, and paying on a customer's behalf
+
+- Identity: `CreateBusinessCustomer`, `GetBusinessCustomer`, `ListBusinessCustomers`,
+  `UpdateBusinessCustomer`, `DeleteBusinessCustomer`, `ArchiveBusinessCustomer`,
+  `RecordBusinessCustomerKyc`, `MarkBusinessCustomerContactVerified`,
+  `ClaimBusinessCustomerForPayment`, with `BusinessCustomer` and their request messages. A business
+  customer is a person a business pays on behalf of — not a user, never a Tiki customer — scoped to
+  (business, environment). For tiki-business-api (all) and tiki-wallet-api (Get, Claim).
+- Wallet `BusinessApiService`: `CreateBusinessPaymentRequest.customer_id` (13) names the payment's
+  originator; `BusinessPayment.customer_id` / `customer_name` / `customer_country` (23–25) report it;
+  `ListBusinessPaymentsRequest.customer_id` (11) filters by it. New refusals `CUSTOMER_NOT_FOUND`,
+  `CUSTOMER_NOT_VERIFIED`, `CUSTOMER_ARCHIVED` (FAILED_PRECONDITION).
+- `BusinessPaymentStatusChangedEvent.CustomerId` / `CustomerName` / `CustomerCountry` (nullable).
+
+Additive.
+
 ## [0.34.0] — 2026-09-27
 
 ### Added — the fee schedule's figures on `FeeEstimate`

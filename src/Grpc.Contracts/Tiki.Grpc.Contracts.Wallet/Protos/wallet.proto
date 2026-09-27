@@ -100,7 +100,8 @@ service BusinessApiService {
   // Failures are gRPC statuses carrying a machine-readable code in the "tiki-error-code" trailer:
   //   INVALID_ARGUMENT     INVALID_REQUEST, INVALID_DESTINATION, INVALID_AMOUNT
   //   FAILED_PRECONDITION  INSUFFICIENT_FUNDS, LIMIT_EXCEEDED, ROUTE_NOT_SUPPORTED,
-  //                        CURRENCY_NOT_SUPPORTED, BUSINESS_NOT_ACTIVE, QUOTE_FAILED
+  //                        CURRENCY_NOT_SUPPORTED, BUSINESS_NOT_ACTIVE, QUOTE_FAILED,
+  //                        CUSTOMER_NOT_FOUND, CUSTOMER_NOT_VERIFIED, CUSTOMER_ARCHIVED
   //   ALREADY_EXISTS       REFERENCE_CONFLICT (same client_reference, different request)
   //   NOT_FOUND            PAYMENT_NOT_FOUND
 
@@ -356,6 +357,12 @@ message CreateBusinessPaymentRequest {
   // Empty: fund from the business's main account. Set: fund from that sub-account's account in
   // funding_currency. The business's API limits apply either way.
   string sub_account_id = 12;
+  // The business's customer on whose behalf the business pays (Identity's BusinessCustomer id):
+  // recorded as the payment's originator, screened and sent as sender details where the provider
+  // takes them. Must belong to the business in this environment, be KYC-approved and not archived
+  // (else FAILED_PRECONDITION CUSTOMER_NOT_FOUND / CUSTOMER_NOT_VERIFIED / CUSTOMER_ARCHIVED). The
+  // business (or sub_account_id) is still what is debited, under the same limits. Empty: none.
+  string customer_id = 13;
 }
 
 message GetBusinessPaymentRequest {
@@ -396,6 +403,11 @@ message BusinessPayment {
   string completed_at = 21;
   // Empty when funded from the business's main account.
   string sub_account_id = 22;
+  // The originator, when the payment was made on a customer's behalf; all three empty otherwise.
+  // Name and country are as they were when the payment was made.
+  string customer_id = 23;
+  string customer_name = 24;
+  string customer_country = 25;
 }
 
 message ListBusinessPaymentsRequest {
@@ -417,6 +429,8 @@ message ListBusinessPaymentsRequest {
   string funding_currency = 9;
   // Empty: every payment of the business. Set: only payments funded from that sub-account.
   string sub_account_id = 10;
+  // Empty: every payment. Set: only payments made on that customer's behalf.
+  string customer_id = 11;
 }
 
 message ListBusinessPaymentsResponse {
