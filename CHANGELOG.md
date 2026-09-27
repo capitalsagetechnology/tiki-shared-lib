@@ -5,6 +5,16 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
+## [0.33.0] — 2026-09-27
+
+### Added — the business's fee model on Identity's `BusinessDetails`
+
+- `fee_model` (13): the commercial contract's `FeeModel` member name (`PayloadDeduction`,
+  `PrefundedAccount`, `MonthlyInvoicing`); empty when there is no contract. Wallet's fee schedule
+  uses it to decide whether a business's fee is taken on top, deducted, or invoiced.
+
+Additive.
+
 ## [0.32.0] — 2026-09-27
 
 ### Added — business country ISO code and phone on Identity's `BusinessDetails`
