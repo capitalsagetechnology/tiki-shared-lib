@@ -114,6 +114,14 @@ service BusinessApiService {
 
   // Newest first.
   rpc ListPayments (ListBusinessPaymentsRequest) returns (ListBusinessPaymentsResponse);
+
+  // --- Sandbox ---------------------------------------------------------------------------------
+
+  // Credits the business's SANDBOX account in `currency` with test money, as if a pay-in had
+  // arrived on `rail` — the business API's payment/simulate-funding. Sandbox only by construction:
+  // there is no environment field, and no live account is ever touched. Idempotent on
+  // (business_id, reference): the same reference credits once and returns the first result.
+  rpc SimulateSandboxFunding (SimulateSandboxFundingRequest) returns (SimulateSandboxFundingResponse);
 }
 
 enum BusinessApiEnvironment {
@@ -335,4 +343,27 @@ message ListBusinessPaymentsRequest {
 message ListBusinessPaymentsResponse {
   repeated BusinessPayment payments = 1;
   int64 total_count = 2;
+}
+
+message SimulateSandboxFundingRequest {
+  string business_id = 1;
+  // ISO 4217, e.g. "CAD" for Interac, "MXN" for SPEI.
+  string currency = 2;
+  string amount = 3;
+  // "Interac" or "Spei" — recorded on the ledger line so the credit reads like the pay-in it stands for.
+  string rail = 4;
+  // The caller's reference; the idempotency key. 1-100 characters.
+  string reference = 5;
+  string sender_name = 6;
+}
+
+message SimulateSandboxFundingResponse {
+  // The ledger entry that credited the account.
+  string entry_id = 1;
+  string account_id = 2;
+  string currency = 3;
+  string amount = 4;
+  string balance_after = 5;
+  // False when this reference had already been credited and nothing new was posted.
+  bool created = 6;
 }
