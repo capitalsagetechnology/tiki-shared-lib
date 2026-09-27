@@ -326,6 +326,10 @@ message ListBusinessPaymentsRequest {
   // 1-based; page size is clamped to 1..200.
   int32 page = 7;
   int32 page_size = 8;
+  // ISO 4217 currency of the account debited; empty means every funding currency. Distinct from
+  // currency_code, which is what the recipient receives: a USD-funded NGN payout matches
+  // funding_currency "USD" and currency_code "NGN".
+  string funding_currency = 9;
 }
 
 message ListBusinessPaymentsResponse {
