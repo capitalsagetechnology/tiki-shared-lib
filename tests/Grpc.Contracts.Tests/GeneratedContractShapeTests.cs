@@ -49,6 +49,11 @@ public class GeneratedContractShapeTests
             typeof(IdentityNs.IdentityService.IdentityServiceBase),
             "GetBusinessWebhook");
 
+    [Fact]
+    public void Identity_BusinessDetails_carries_country_iso2_and_phone_number() =>
+        AssertFields<IdentityNs.BusinessDetails>(
+            ("CountryIso2", typeof(string)), ("PhoneNumber", typeof(string)));
+
     [Theory]
     [InlineData("ListAccounts")]
     [InlineData("ListLedgerEntries")]

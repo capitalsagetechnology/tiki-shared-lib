@@ -205,6 +205,11 @@ message BusinessDetails {
   string status = 8;
   string created_at = 9;
   string updated_at = 10;
+  // ISO 3166-1 alpha-2 of the business's country (country_id), e.g. "KE".
+  string country_iso2 = 11;
+  // The business's own contact phone in E.164, e.g. "+254712345678". Empty when the owner has not
+  // set one — a business created before this field existed.
+  string phone_number = 12;
 }
 
 // --- Customer ---
