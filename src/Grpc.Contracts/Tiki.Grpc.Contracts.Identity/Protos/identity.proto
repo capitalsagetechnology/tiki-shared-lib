@@ -39,6 +39,13 @@ service IdentityService {
 
   // --- Transaction ---
   rpc ValidateTransactionPin (ValidateTransactionPinRequest) returns (ValidateTransactionPinResult);
+
+  // --- Business API ---
+  // Where to deliver a business's webhooks in one environment, and the secret to sign them with.
+  // For tiki-business-api only: Identity refuses any other caller with PERMISSION_DENIED, because
+  // the answer carries the signing secret in plaintext. The secret is stored encrypted and is
+  // decrypted for this call alone; callers cache it briefly and never persist it.
+  rpc GetBusinessWebhook (GetBusinessWebhookRequest) returns (BusinessWebhook);
 }
 
 message PingRequest {
@@ -267,4 +274,30 @@ message ValidateTransactionPinRequest {
 
 message ValidateTransactionPinResult {
   bool is_valid = 1;
+}
+
+// --- Business API ---
+
+enum BusinessApiEnvironment {
+  BUSINESS_API_ENVIRONMENT_UNSPECIFIED = 0;
+  BUSINESS_API_ENVIRONMENT_SANDBOX = 1;
+  BUSINESS_API_ENVIRONMENT_LIVE = 2;
+}
+
+message GetBusinessWebhookRequest {
+  string business_id = 1;
+  BusinessApiEnvironment environment = 2;
+}
+
+message BusinessWebhook {
+  // False when no URL is set for the environment; every other field is then empty.
+  bool configured = 1;
+  string url = 2;
+  // Plaintext HMAC key. Present whenever configured is true.
+  string signing_secret = 3;
+  // Event types the owner subscribed to, e.g. "payout.bank.completed". Empty means every event.
+  repeated string subscribed_event_types = 4;
+  // False when the business may not use the API in this environment (suspended, or live before
+  // KYB approval): deliveries are then held rather than sent.
+  bool api_access_enabled = 5;
 }

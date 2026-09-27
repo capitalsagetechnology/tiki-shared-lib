@@ -42,6 +42,13 @@ public class GeneratedContractShapeTests
             typeof(WalletNs.PayoutRoutingService.PayoutRoutingServiceBase),
             rpcName);
 
+    [Fact]
+    public void Identity_GetBusinessWebhook_rpc_is_present_on_both_the_stub_and_the_base() =>
+        AssertRpcPresentOnBoth(
+            typeof(IdentityNs.IdentityService.IdentityServiceClient),
+            typeof(IdentityNs.IdentityService.IdentityServiceBase),
+            "GetBusinessWebhook");
+
     [Theory]
     [InlineData("ListAccounts")]
     [InlineData("ListLedgerEntries")]
@@ -52,6 +59,7 @@ public class GeneratedContractShapeTests
     [InlineData("CreatePayment")]
     [InlineData("GetPayment")]
     [InlineData("ListPayments")]
+    [InlineData("SimulateSandboxFunding")]
     public void Wallet_BusinessApi_rpc_is_present_on_both_the_stub_and_the_base(string rpcName) =>
         AssertRpcPresentOnBoth(
             typeof(WalletNs.BusinessApiService.BusinessApiServiceClient),

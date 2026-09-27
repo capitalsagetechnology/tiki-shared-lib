@@ -5,6 +5,20 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
+## [0.28.0] — 2026-09-27
+
+### Added — webhook lookup and sandbox funding for the business API
+
+- `IdentityService.GetBusinessWebhook`: a business's webhook URL, subscribed event types and
+  plaintext signing secret for one environment. Identity answers business-api only; the secret is
+  stored encrypted and decrypted for this call alone.
+- `BusinessApiService.SimulateSandboxFunding` on Wallet: credits a business's sandbox account with
+  test money as if a pay-in had arrived, idempotent on the caller's reference. Sandbox-only by
+  construction. Backs Chimoney's payment/simulate-funding.
+- `BusinessApiEnvironment` enum in the Identity contract (same values as Wallet's).
+
+Additive.
+
 ## [0.27.0] — 2026-09-26
 
 ### Added — `ListBusinessPaymentsRequest.funding_currency`
