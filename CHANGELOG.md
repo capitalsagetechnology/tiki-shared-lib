@@ -5,6 +5,17 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
+## [0.32.0] — 2026-09-27
+
+### Added — business country ISO code and phone on Identity's `BusinessDetails`
+
+- `country_iso2` (11): ISO 3166-1 alpha-2 of the business's country, so callers no longer have to
+  resolve `country_id` themselves.
+- `phone_number` (12): the business's own contact phone in E.164. Empty for a business that has
+  not set one. Wallet needs both for Flutterwave M-Pesa (KES) payout sender details.
+
+Additive.
+
 ## [0.31.0] — 2026-09-27
 
 ### Added — bank branches and fee estimates on `BusinessApiService`
