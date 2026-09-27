@@ -5,6 +5,24 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
+## [0.29.0] — 2026-09-27
+
+### Added — sub-accounts on `BusinessApiService`
+
+Chimoney sub-accounts (multicurrency wallets) are sub-ledgers of the business's own funds: the
+business stays the customer, and Wallet partitions its ledger by a `sub_account_id` it never
+validates (tiki-business-api owns the profiles).
+
+- `OpenSubAccountWallets`, `CloseSubAccountWallets` (refused while any account holds money).
+- `QuoteInternalTransfer`, `CreateInternalTransfer`: main ↔ sub-account and sub ↔ sub moves,
+  converted through FX pricing at the business's rate; idempotent on the client reference; not a
+  payout, so API limits do not apply.
+- Optional `sub_account_id` on ListAccounts, ListLedgerEntries, CreatePayment (fund a payout from a
+  sub-account), GetPayment, ListPayments; `BusinessAccount.sub_account_id`,
+  `BusinessPayment.sub_account_id`.
+
+Additive: an unset `sub_account_id` means the business's main accounts, as before.
+
 ## [0.28.0] — 2026-09-27
 
 ### Added — webhook lookup and sandbox funding for the business API

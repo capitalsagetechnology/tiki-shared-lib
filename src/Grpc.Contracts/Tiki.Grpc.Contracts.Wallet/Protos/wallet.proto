@@ -122,6 +122,29 @@ service BusinessApiService {
   // there is no environment field, and no live account is ever touched. Idempotent on
   // (business_id, reference): the same reference credits once and returns the first result.
   rpc SimulateSandboxFunding (SimulateSandboxFundingRequest) returns (SimulateSandboxFundingResponse);
+
+  // --- Sub-accounts (sub-ledgers of the business) ------------------------------------------------
+  //
+  // Additional codes in the "tiki-error-code" trailer:
+  //   FAILED_PRECONDITION  SUBACCOUNT_NOT_EMPTY, CURRENCY_NOT_SUPPORTED
+  //   NOT_FOUND            SUBACCOUNT_WALLET_NOT_FOUND
+
+  // Opens the sub-account's accounts in these currencies (idempotent: existing ones are returned
+  // as they are). Returns every account the sub-account holds in the environment.
+  rpc OpenSubAccountWallets (OpenSubAccountWalletsRequest) returns (ListBusinessAccountsResponse);
+
+  // Closes every account of the sub-account in the environment. Refused with SUBACCOUNT_NOT_EMPTY
+  // while any of them holds money.
+  rpc CloseSubAccountWallets (CloseSubAccountWalletsRequest) returns (CloseSubAccountWalletsResponse);
+
+  // Prices a move between two of the business's own accounts (main ↔ sub-account, or sub ↔ sub),
+  // converting through FX pricing at the business's rate when the currencies differ. Moves nothing.
+  rpc QuoteInternalTransfer (InternalTransferRequest) returns (InternalTransferQuote);
+
+  // Moves money between two of the business's own accounts in one environment. Idempotent on
+  // (business_id, environment, client_reference) like CreatePayment. Not a payout: nothing leaves
+  // the business, so API limits do not apply.
+  rpc CreateInternalTransfer (InternalTransferRequest) returns (InternalTransfer);
 }
 
 enum BusinessApiEnvironment {
@@ -133,6 +156,10 @@ enum BusinessApiEnvironment {
 message ListBusinessAccountsRequest {
   string business_id = 1;
   BusinessApiEnvironment environment = 2;
+  // Empty: the business's main accounts. Set: that sub-account's accounts only. Sub-accounts are
+  // sub-ledgers of the business's own funds (the business stays the customer); Wallet partitions
+  // by this id and never validates it — tiki-business-api owns sub-account profiles.
+  string sub_account_id = 3;
 }
 
 message BusinessAccount {
@@ -146,6 +173,8 @@ message BusinessAccount {
   // Empty for a tenant that keeps business money on the ledger without a wallet.
   string wallet_id = 6;
   string wallet_account_id = 7;
+  // Empty for a main account.
+  string sub_account_id = 8;
 }
 
 message ListBusinessAccountsResponse {
@@ -165,6 +194,8 @@ message ListBusinessLedgerEntriesRequest {
   // 1-based. Page size is clamped to 1..200 by Wallet.
   int32 page = 7;
   int32 page_size = 8;
+  // Empty: main accounts (ignored when account_id is set). Set: that sub-account's accounts.
+  string sub_account_id = 9;
 }
 
 message BusinessLedgerEntry {
@@ -283,6 +314,9 @@ message CreateBusinessPaymentRequest {
   // bankCode/accountNumber/accountName for NG BankTransfer.
   map<string, string> destination = 10;
   string narration = 11;
+  // Empty: fund from the business's main account. Set: fund from that sub-account's account in
+  // funding_currency. The business's API limits apply either way.
+  string sub_account_id = 12;
 }
 
 message GetBusinessPaymentRequest {
@@ -292,6 +326,8 @@ message GetBusinessPaymentRequest {
     string payment_id = 3;
     string client_reference = 4;
   }
+  // When set, the payment must belong to this sub-account, else PAYMENT_NOT_FOUND.
+  string sub_account_id = 5;
 }
 
 message BusinessPayment {
@@ -319,6 +355,8 @@ message BusinessPayment {
   string updated_at = 20;
   // Empty until the payment reaches Completed.
   string completed_at = 21;
+  // Empty when funded from the business's main account.
+  string sub_account_id = 22;
 }
 
 message ListBusinessPaymentsRequest {
@@ -338,6 +376,8 @@ message ListBusinessPaymentsRequest {
   // currency_code, which is what the recipient receives: a USD-funded NGN payout matches
   // funding_currency "USD" and currency_code "NGN".
   string funding_currency = 9;
+  // Empty: every payment of the business. Set: only payments funded from that sub-account.
+  string sub_account_id = 10;
 }
 
 message ListBusinessPaymentsResponse {
@@ -366,4 +406,65 @@ message SimulateSandboxFundingResponse {
   string balance_after = 5;
   // False when this reference had already been credited and nothing new was posted.
   bool created = 6;
+}
+
+message OpenSubAccountWalletsRequest {
+  string business_id = 1;
+  BusinessApiEnvironment environment = 2;
+  string sub_account_id = 3;
+  // ISO 4217 codes.
+  repeated string currencies = 4;
+}
+
+message CloseSubAccountWalletsRequest {
+  string business_id = 1;
+  BusinessApiEnvironment environment = 2;
+  string sub_account_id = 3;
+}
+
+message CloseSubAccountWalletsResponse {
+  int32 closed_accounts = 1;
+}
+
+// One side of an internal transfer: the business's main account, or a sub-account's, in a currency.
+message InternalTransferParty {
+  // Empty: the business's main account.
+  string sub_account_id = 1;
+}
+
+message InternalTransferRequest {
+  string business_id = 1;
+  BusinessApiEnvironment environment = 2;
+  // Required for CreateInternalTransfer; ignored by QuoteInternalTransfer. 1-100 characters.
+  string client_reference = 3;
+  InternalTransferParty from = 4;
+  InternalTransferParty to = 5;
+  // Debited from `from`, in origin_currency.
+  string amount = 6;
+  string origin_currency = 7;
+  string destination_currency = 8;
+  string narration = 9;
+}
+
+message InternalTransferQuote {
+  string origin_currency = 1;
+  string origin_amount = 2;
+  string destination_currency = 3;
+  string destination_amount = 4;
+  // Origin → destination; "1" when the currencies match.
+  string rate = 5;
+  string expires_at = 6;
+}
+
+message InternalTransfer {
+  string id = 1;
+  string client_reference = 2;
+  InternalTransferParty from = 3;
+  InternalTransferParty to = 4;
+  string origin_currency = 5;
+  string origin_amount = 6;
+  string destination_currency = 7;
+  string destination_amount = 8;
+  string rate = 9;
+  string created_at = 10;
 }
