@@ -5,6 +5,16 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
+## [0.31.0] — 2026-09-27
+
+### Added — bank branches and fee estimates on `BusinessApiService`
+
+- `ListBankBranches(bank_id)`: branches of a bank from `ListBanks`, from the bank-transfer provider.
+- `EstimateFees`: what Tiki charges on an amount for a rail and direction, from the pricing Wallet
+  actually applies — zero where nothing is charged. Backs Chimoney's `info/fee-estimate`.
+
+Additive.
+
 ## [0.30.0] — 2026-09-27
 
 ### Added — pay-ins on `BusinessApiService`, and their status event
