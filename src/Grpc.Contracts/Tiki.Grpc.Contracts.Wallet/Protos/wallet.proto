@@ -358,7 +358,7 @@ message CreateBusinessPaymentRequest {
   // funding_currency. The business's API limits apply either way.
   string sub_account_id = 12;
   // The business's customer on whose behalf the business pays (Identity's BusinessCustomer id):
-  // recorded as the payment's originator, screened and sent as sender details where the provider
+  // recorded as the payment's originator (on the payment and its status event) and sent as sender details where the provider
   // takes them. Must belong to the business in this environment, be KYC-approved and not archived
   // (else FAILED_PRECONDITION CUSTOMER_NOT_FOUND / CUSTOMER_NOT_VERIFIED / CUSTOMER_ARCHIVED). The
   // business (or sub_account_id) is still what is debited, under the same limits. Empty: none.
