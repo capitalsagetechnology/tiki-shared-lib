@@ -674,4 +674,25 @@ message FeeEstimate {
   string net_amount = 8;
   // A plain sentence on how the figure was reached.
   string note = 9;
+
+  // --- 0.34.0: the fee schedule's own figures (additive; the fields above keep their meaning) ---
+  // Tiki's fee from the matching fee rule, before tax. "0" when no rule matched.
+  string fee = 10;
+  // Tax on the transaction amount at the tenant's rate. "0" when no rate is in force.
+  string tax = 11;
+  // The tax's name as staff configured it, e.g. "VAT". Empty when there is no tax.
+  string tax_label = 12;
+  // How the business pays it: "OnTop", "Deducted" or "Accrued" (the business's FeeModel).
+  string collection = 13;
+  // The business's FeeModel member name, e.g. "PayloadDeduction".
+  string fee_model = 14;
+  // What leaves (payout) or is credited to (funding) the business's balance.
+  string debit_amount = 15;
+  // What the recipient receives (payout) or what the payer sends (funding).
+  string recipient_amount = 16;
+  // Chimoney's netAmount: amount − (fee + tax), whatever the direction.
+  string chimoney_net_amount = 17;
+  // The fee rule and tax rate that priced it; empty when none matched.
+  string fee_rule_id = 18;
+  string tax_rate_id = 19;
 }

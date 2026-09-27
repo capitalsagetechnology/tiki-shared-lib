@@ -55,6 +55,13 @@ public class GeneratedContractShapeTests
             ("CountryIso2", typeof(string)), ("PhoneNumber", typeof(string)));
 
     [Fact]
+    public void Wallet_FeeEstimate_carries_the_fee_schedule_figures() =>
+        AssertFields<Tiki.Grpc.Contracts.Wallet.FeeEstimate>(
+            ("Fee", typeof(string)), ("Tax", typeof(string)), ("TaxLabel", typeof(string)), ("Collection", typeof(string)),
+            ("FeeModel", typeof(string)), ("DebitAmount", typeof(string)), ("RecipientAmount", typeof(string)),
+            ("ChimoneyNetAmount", typeof(string)), ("FeeRuleId", typeof(string)), ("TaxRateId", typeof(string)));
+
+    [Fact]
     public void Identity_BusinessDetails_carries_the_fee_model() =>
         AssertFields<IdentityNs.BusinessDetails>(("FeeModel", typeof(string)));
 

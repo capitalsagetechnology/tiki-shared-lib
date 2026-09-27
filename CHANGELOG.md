@@ -5,6 +5,17 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
+## [0.34.0] — 2026-09-27
+
+### Added — the fee schedule's figures on `FeeEstimate`
+
+- `fee` (10), `tax` (11), `tax_label` (12), `collection` (13), `fee_model` (14), `debit_amount` (15),
+  `recipient_amount` (16), `chimoney_net_amount` (17), `fee_rule_id` (18), `tax_rate_id` (19): what
+  Wallet's fee calculator actually charges, so `info/fee-estimate` and quotes show the same figures a
+  payment is charged. The 0.31.0 fields keep their meaning.
+
+Additive.
+
 ## [0.33.0] — 2026-09-27
 
 ### Added — the business's fee model on Identity's `BusinessDetails`
