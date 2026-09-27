@@ -54,6 +54,10 @@ public class GeneratedContractShapeTests
         AssertFields<IdentityNs.BusinessDetails>(
             ("CountryIso2", typeof(string)), ("PhoneNumber", typeof(string)));
 
+    [Fact]
+    public void Identity_BusinessDetails_carries_the_fee_model() =>
+        AssertFields<IdentityNs.BusinessDetails>(("FeeModel", typeof(string)));
+
     [Theory]
     [InlineData("ListAccounts")]
     [InlineData("ListLedgerEntries")]

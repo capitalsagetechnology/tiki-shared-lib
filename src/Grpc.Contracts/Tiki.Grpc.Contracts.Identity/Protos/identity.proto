@@ -210,6 +210,10 @@ message BusinessDetails {
   // The business's own contact phone in E.164, e.g. "+254712345678". Empty when the owner has not
   // set one — a business created before this field existed.
   string phone_number = 12;
+  // Identity.Domain.Enums.FeeModel member name from the business's commercial contract:
+  // "PayloadDeduction", "PrefundedAccount" or "MonthlyInvoicing". Empty when the business has no
+  // contract. Wallet reads it to decide how a fee is collected.
+  string fee_model = 13;
 }
 
 // --- Customer ---
