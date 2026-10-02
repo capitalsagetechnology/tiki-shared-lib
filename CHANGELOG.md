@@ -5,6 +5,20 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
+## [0.37.0] — 2026-10-02
+
+### Added — Pateno outgoing e-Transfer status lookup
+
+- `PatenoService.SearchEtransferTransaction`: looks up one or more outgoing e-Transfers by
+  `transaction_id`, `transaction_reference_number`, or `interac_reference_number` (at least one
+  required — Pateno errors on an unfiltered search). Distinct from `SearchIncomingTransfers`,
+  which only ever covers inbound money sent to this account. Returns
+  `EtransferTransactionStatus` rows carrying Pateno's own status code
+  (`P`/`S`/`E`/`RJ`/`C`/`V`/`U`/`DF`/`BL`/`IB`) and description. For tiki-integration-service and
+  tiki-wallet-api, to replace `PatenoPayoutProvider.CheckStatusAsync`'s stubbed `Indeterminate`.
+
+Additive.
+
 ## [0.36.0] — 2026-09-27
 
 ### Added — a pay-in chooses the account it is credited to

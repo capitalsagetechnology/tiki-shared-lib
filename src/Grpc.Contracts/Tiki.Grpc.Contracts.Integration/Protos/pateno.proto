@@ -14,6 +14,9 @@ service PatenoService {
   rpc CreateEtransferTransactionWithCustomer (CreateEtransferTransactionWithCustomerRequest) returns (EtransferTransactionReply);
   rpc SearchPayee (SearchPayeeRequest) returns (SearchPayeeReply);
   rpc CreateIndividualBillPayment (CreateIndividualBillPaymentRequest) returns (BillPaymentReply);
+  // Outgoing e-Transfer status lookup. Distinct from SearchIncomingTransfers, which only ever
+  // covers inbound money-send/money-request transactions this account received.
+  rpc SearchEtransferTransaction (SearchEtransferTransactionRequest) returns (SearchEtransferTransactionReply);
 }
 
 message CreateEtransferRequestMoneyRequest {
@@ -148,4 +151,41 @@ message CreateIndividualBillPaymentRequest {
 
 message BillPaymentReply {
   int64 transaction_id = 1;
+}
+
+// SearchEtransferTransaction: at least one of transaction_id, transaction_reference_number, or
+// interac_reference_number should be supplied - Pateno errors on an unfiltered/too-broad search.
+message SearchEtransferTransactionRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  int64 transaction_id = 3;
+  string transaction_reference_number = 4;
+  string interac_reference_number = 5;
+  string customer_number = 6;
+  string transaction_status_code = 7;
+  // Our own idempotency key, sent as ClientReferenceNumber on the original
+  // CreateEtransferTransactionWithCustomer call - the only handle still available when that
+  // call's own reply was never recorded (a crash or timeout between Pateno accepting and us
+  // saving TransactionReferenceNumber). Pateno matches on this field too, so a transaction can
+  // always be found again even with no provider reference on file.
+  string client_reference_number = 8;
+}
+
+// One matching transaction. transaction_status_code includes Pateno's documented codes - P
+// Pending, S Sent, E Error, RJ Rejected, C Completed, V Cancelled, U Unapproved, DF Deferred,
+// BL Blocked by Limit Control, IB Insufficient Balance - plus at least one undocumented one seen
+// from the live sandbox: RD "Ready To Send". Not an exhaustive enum; treat any value as free text.
+message EtransferTransactionStatus {
+  int64 transaction_id = 1;
+  string transaction_reference_number = 2;
+  string interac_reference_number = 3;
+  string transaction_status_code = 4;
+  string transaction_status_description = 5;
+  string transaction_type_code = 6;
+  string amount = 7;
+  string error_description = 8;
+}
+
+message SearchEtransferTransactionReply {
+  repeated EtransferTransactionStatus transactions = 1;
 }
