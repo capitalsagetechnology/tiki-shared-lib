@@ -20,6 +20,9 @@
     <!-- Test-only: proves the Persistence global query filter and audit interceptor
          actually work against a real DbContext, not just that they compile. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.0" />
+    <!-- Test-only: routes RequestLoggingMiddleware's ILogger into a real Serilog pipeline, so
+         the JSON tests see exactly what a service writes to its console. -->
+    <PackageReference Include="Serilog.Extensions.Logging" Version="10.0.0" />
     <PackageReference Include="coverlet.collector" Version="10.0.1">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>

@@ -67,6 +67,13 @@
 
     <!-- Logging -->
     <PackageReference Include="Serilog" Version="4.4.0" />
+    <!-- Console + compact JSON for ConfigureTikiLogging(serviceName, configuration). Pinned to the
+         lowest versions Serilog.AspNetCore 9/10 already bring, so no consumer gets a downgrade
+         error (one repo still pins Serilog.Sinks.Console 6.0.0). -->
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+    <PackageReference Include="Serilog.Formatting.Compact" Version="3.0.0" />
+    <!-- Optional OTLP log sink, off unless Tiki:Logging:Otlp:Enabled. -->
+    <PackageReference Include="Serilog.Sinks.OpenTelemetry" Version="4.2.0" />
 
     <!-- Persistence (base package only — never a concrete database provider) -->
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.0" />

@@ -20,7 +20,8 @@ public sealed class SessionLifecycleLoggingHandler(ILogger<SessionLifecycleLoggi
         var method = request.Method;
         var path = request.RequestUri?.AbsolutePath ?? "(unknown)";
         var sessionId = ServiceContext.SessionId;
-        var traceId = ServiceContext.TraceId;
+        // Tempo's 32-hex id, not the raw traceparent ServiceContext carries for propagation.
+        var traceId = Telemetry.TikiTraceIds.CurrentTraceId() ?? ServiceContext.TraceId;
 
         logger.LogInformation(
             "Outbound call started: {Method} {Path} — session {SessionId}, trace {TraceId}",

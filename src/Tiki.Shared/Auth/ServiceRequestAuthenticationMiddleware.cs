@@ -106,6 +106,9 @@ public sealed class ServiceRequestAuthenticationMiddleware(
 
         if (Guid.TryParse(context.Request.Headers[TikiHeaderNames.UserId], out var userId))
             ServiceContext.UserId = userId;
+
+        // The AsyncLocal writes above do not flow back up to RequestLoggingMiddleware.
+        Logging.RequestLogContext.Record(context, ServiceContext.TenantId, ServiceContext.UserId);
     }
 
     private static Task WriteProblem(HttpContext context, int status, string detail)
