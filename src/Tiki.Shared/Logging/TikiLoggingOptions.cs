@@ -7,7 +7,7 @@ public enum TikiLogFormat
 {
     /// <summary>
     /// Serilog compact JSON (CLEF), one object per line, rendered message included
-    /// (<c>RenderedCompactJsonFormatter</c>). Every structured property — TenantId, TraceId,
+    /// (<see cref="TikiCompactJsonFormatter"/>). Every structured property — TenantId, TraceId,
     /// StatusCode … — survives as its own field, which is what Alloy turns into Loki structured
     /// metadata.
     /// </summary>

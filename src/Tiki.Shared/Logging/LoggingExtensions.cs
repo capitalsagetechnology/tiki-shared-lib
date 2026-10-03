@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Configuration;
 using Serilog;
-using Serilog.Formatting.Compact;
 using Serilog.Sinks.OpenTelemetry;
 using Tiki.Shared.Telemetry;
 
@@ -47,7 +46,7 @@ public static class LoggingExtensions
         configuration.ConfigureTikiLogging(serviceName);
 
         if (ResolveFormat(appConfiguration, environmentName) == TikiLogFormat.Json)
-            configuration.WriteTo.Console(new RenderedCompactJsonFormatter());
+            configuration.WriteTo.Console(new TikiCompactJsonFormatter());
         else
             configuration.WriteTo.Console(outputTemplate: TextOutputTemplate);
 

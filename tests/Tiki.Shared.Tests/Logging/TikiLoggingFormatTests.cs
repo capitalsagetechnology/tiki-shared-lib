@@ -49,10 +49,31 @@ public class TikiLoggingFormatTests
 
         using var json = JsonDocument.Parse(Assert.Single(capture.Lines));
         var root = json.RootElement;
-        Assert.Equal("Credited 12.5 to wallet \"w-1\"", root.GetProperty("@m").GetString());
+        // Literal, like the text console's {Message:lj} — so regexes written against text logs still match.
+        Assert.Equal("Credited 12.5 to wallet w-1", root.GetProperty("@m").GetString());
+        Assert.False(root.TryGetProperty("@l", out _));   // CLEF omits Information
         Assert.Equal(12.5m, root.GetProperty("Amount").GetDecimal());
         Assert.Equal("w-1", root.GetProperty("WalletId").GetString());
         Assert.Equal("wallet-service", root.GetProperty("ServiceName").GetString());
+    }
+
+    [Fact]
+    public void Json_format_carries_level_exception_and_escapes_reserved_property_names()
+    {
+        using var capture = new ConsoleCapture();
+        using (var logger = new LoggerConfiguration()
+                   .ConfigureTikiLogging("wallet-service", Config(("Tiki:Logging:Format", "json")))
+                   .CreateLogger())
+        {
+            logger.ForContext("@odd", 1).Error(new InvalidOperationException("boom"), "Payout {PayoutId} failed", 7);
+        }
+
+        using var json = JsonDocument.Parse(Assert.Single(capture.Lines));
+        var root = json.RootElement;
+        Assert.Equal("Error", root.GetProperty("@l").GetString());
+        Assert.StartsWith("System.InvalidOperationException: boom", root.GetProperty("@x").GetString());
+        Assert.Equal("Payout 7 failed", root.GetProperty("@m").GetString());
+        Assert.Equal(1, root.GetProperty("@@odd").GetInt32());
     }
 
     [Fact]
@@ -113,7 +134,7 @@ public class TikiLoggingFormatTests
                     ctx.Items[HttpContextSessionAccessor.ActiveTenantItemsKey] = tenantId;
                     await new AmbientContextMiddleware(_ => Task.CompletedTask).InvokeAsync(ctx);
                 },
-                factory.CreateLogger<RequestLoggingMiddleware>());
+                Microsoft.Extensions.Logging.LoggerFactoryExtensions.CreateLogger<RequestLoggingMiddleware>(factory));
 
             var context = new DefaultHttpContext();
             context.Request.Method = "GET";
@@ -129,6 +150,8 @@ public class TikiLoggingFormatTests
         Assert.Equal(activity.SpanId.ToHexString(), root.GetProperty("SpanId").GetString());
         Assert.Equal(activity.TraceId.ToHexString(), root.GetProperty("@tr").GetString());
         Assert.Equal("GET", root.GetProperty("RequestMethod").GetString());
+        Assert.StartsWith("GET /api/wallets responded 200 in ", root.GetProperty("@m").GetString());
+        Assert.Contains($"tenant {tenantId}, session ", root.GetProperty("@m").GetString());
         Assert.Equal("/api/wallets", root.GetProperty("RequestPath").GetString());
         Assert.Equal(200, root.GetProperty("StatusCode").GetInt32());
     }
