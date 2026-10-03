@@ -41,6 +41,10 @@ public sealed class AmbientContextMiddleware(RequestDelegate next)
             ServiceContext.TenantId = tenantId;
         }
 
+        // For RequestLoggingMiddleware's completion line, which cannot see the AsyncLocal writes
+        // above once this frame returns.
+        Logging.RequestLogContext.Record(context, ServiceContext.TenantId, ServiceContext.UserId);
+
         return next(context);
     }
 }

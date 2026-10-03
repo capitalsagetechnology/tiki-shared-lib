@@ -5,6 +5,60 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
+## [0.38.0] — 2026-10-03
+
+### Added — structured logs that Grafana can search
+
+- `LoggingExtensions.ConfigureTikiLogging(serviceName, appConfiguration, environmentName?)`: one call
+  that applies the Tiki conventions **and** adds the console sink. It replaces a service's own
+  `.WriteTo.Console()` — calling both writes every line twice.
+  - Console format resolves by `Tiki:Logging:Format` (`json` | `text`). When it is unset, a
+    container (`DOTNET_RUNNING_IN_CONTAINER=true`) or any non-Development environment writes
+    **compact JSON** (`RenderedCompactJsonFormatter`), and local Development writes the readable
+    `[HH:mm:ss LVL] message` text. In JSON every structured property is its own field, which the
+    shared infra's Alloy pipeline turns into Loki structured metadata.
+  - Optional second sink: `Tiki:Logging:Otlp:Enabled` (off by default) sends logs over OTLP to the
+    collector (`Tiki:Logging:Otlp:Endpoint`, falling back to `Tiki:Telemetry:OtlpEndpoint`). Turn it on
+    together with the service's entry in the infra's `TIKI_LOGS_OTLP_SERVICES` so each line is stored once.
+    The console sink stays on either way, for crashes before the exporter starts.
+- `TikiLogEnrichers` now adds `TenantId`, `UserId` and `SessionId` from `ServiceContext`, and
+  `ConfigureTikiLogging` adds `Enrich.FromLogContext()`. Ids only, never names, emails, phone
+  numbers, tokens or secrets. A property the log call supplies itself is left as written. There is no
+  ambient `BusinessId`: it appears only where a log call names it.
+- `TikiTraceIds`: every log line's `TraceId` / `SpanId` is now Tempo's 32-hex / 16-hex id, on HTTP and
+  Kafka paths alike, so a log line and its trace join directly. `ServiceContext.TraceId` itself is
+  unchanged (it is what `X-Correlation-Id` and the Kafka `traceparent` carry).
+- New packages: `Serilog.Formatting.Compact` 3.0.0, `Serilog.Sinks.OpenTelemetry` 4.2.0.
+
+### Fixed — request lines always said `tenant null`
+
+- `RequestLoggingMiddleware` read `ServiceContext.TenantId` after `await next()`, but the value set by
+  authentication further down the pipeline lives in an `AsyncLocal` that never flows back up, so every
+  request line logged `tenant null`, authenticated or not. The verified tenant, user and session are now
+  recorded on a `RequestLogContext` created before `next` (written by `AmbientContextMiddleware` and the
+  service-request authentication), and the completion line reads them from there.
+
+### Upgrading
+
+Additive. To get JSON logs and the new fields, a service replaces its `.WriteTo.Console(...)` with
+`.ConfigureTikiLogging("<service.name>", context.Configuration, context.HostingEnvironment.EnvironmentName)`.
+A service that only bumps the version keeps its current console output but gains the enrichers and the
+`tenant` fix.
+
+## [0.37.0] — 2026-10-02
+
+### Added — Pateno outgoing e-Transfer status lookup
+
+- `PatenoService.SearchEtransferTransaction`: looks up one or more outgoing e-Transfers by
+  `transaction_id`, `transaction_reference_number`, or `interac_reference_number` (at least one
+  required — Pateno errors on an unfiltered search). Distinct from `SearchIncomingTransfers`,
+  which only ever covers inbound money sent to this account. Returns
+  `EtransferTransactionStatus` rows carrying Pateno's own status code
+  (`P`/`S`/`E`/`RJ`/`C`/`V`/`U`/`DF`/`BL`/`IB`) and description. For tiki-integration-service and
+  tiki-wallet-api, to replace `PatenoPayoutProvider.CheckStatusAsync`'s stubbed `Indeterminate`.
+
+Additive.
+
 ## [0.36.0] — 2026-09-27
 
 ### Added — a pay-in chooses the account it is credited to

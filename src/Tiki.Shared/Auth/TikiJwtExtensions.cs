@@ -196,6 +196,7 @@ public static class TikiJwtExtensions
         ServiceContext.TenantId = selection.TenantId;
         ServiceContext.UserId = session.UserId;
         ServiceContext.UserType = session.UserType;
+        Logging.RequestLogContext.Record(context.HttpContext, selection.TenantId, session.UserId);
 
         var options = context.HttpContext.RequestServices.GetRequiredService<IOptions<SessionOptions>>().Value;
         if (options.SlidingExpiration)
