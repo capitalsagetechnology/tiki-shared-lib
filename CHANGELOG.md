@@ -20,6 +20,50 @@ behavior change in a minor or patch release.
   `CrayfiTransactionStatus`. For tiki-integration-service (server) and tiki-wallet-api (client).
 
 Additive.
+## [0.38.0] — 2026-10-03
+
+### Added — structured logs that Grafana can search
+
+- `LoggingExtensions.ConfigureTikiLogging(serviceName, appConfiguration, environmentName?)`: one call
+  that applies the Tiki conventions **and** adds the console sink. It replaces a service's own
+  `.WriteTo.Console()` — calling both writes every line twice.
+  - Console format resolves by `Tiki:Logging:Format` (`json` | `text`). When it is unset, a
+    container (`DOTNET_RUNNING_IN_CONTAINER=true`) or any non-Development environment writes
+    **compact JSON** (`TikiCompactJsonFormatter`: CLEF like `RenderedCompactJsonFormatter`, except
+    `@m` renders strings unquoted exactly as the text console's `{Message:lj}`, so regexes written
+    against text logs keep matching), and local Development writes the readable
+    `[HH:mm:ss LVL] message` text. In JSON every structured property is its own field, which the
+    shared infra's Alloy pipeline turns into Loki structured metadata.
+  - Optional second sink: `Tiki:Logging:Otlp:Enabled` (off by default) sends logs over OTLP to the
+    collector (`Tiki:Logging:Otlp:Endpoint`, falling back to `Tiki:Telemetry:OtlpEndpoint`). Turn it on
+    together with the service's entry in the infra's `TIKI_LOGS_OTLP_SERVICES` so each line is stored once.
+    The console sink stays on either way, for crashes before the exporter starts.
+- `TikiLogEnrichers` now adds `TenantId`, `UserId` and `SessionId` from `ServiceContext`, and
+  `ConfigureTikiLogging` adds `Enrich.FromLogContext()`. Ids only, never names, emails, phone
+  numbers, tokens or secrets. A property the log call supplies itself is left as written. There is no
+  ambient `BusinessId`: it appears only where a log call names it.
+- `TikiTraceIds`: every log line's `TraceId` / `SpanId` is now Tempo's 32-hex / 16-hex id, on HTTP and
+  Kafka paths alike, so a log line and its trace join directly. `ServiceContext.TraceId` itself is
+  unchanged (it is what `X-Correlation-Id` and the Kafka `traceparent` carry).
+- `RequestLoggingMiddleware`'s line now names its fields `RequestMethod`/`RequestPath` (were
+  `Method`/`Path`, same text), logs `TraceId` as Tempo's id, and appends `user {UserId}`.
+- `SessionLifecycleLoggingHandler` logs the normalised trace id too.
+- New packages: `Serilog.Sinks.Console` 6.0.0, `Serilog.Sinks.OpenTelemetry` 4.2.0.
+
+### Fixed — request lines always said `tenant null`
+
+- `RequestLoggingMiddleware` read `ServiceContext.TenantId` after `await next()`, but the value set by
+  authentication further down the pipeline lives in an `AsyncLocal` that never flows back up, so every
+  request line logged `tenant null`, authenticated or not. The verified tenant and user are now
+  recorded on a `RequestLogContext` created before `next` (written by the JWT token-validated handler,
+  `AmbientContextMiddleware` and the service-request authentication), and the completion line reads them from there.
+
+### Upgrading
+
+Additive. To get JSON logs and the new fields, a service replaces its `.WriteTo.Console(...)` with
+`.ConfigureTikiLogging("<service.name>", context.Configuration, context.HostingEnvironment.EnvironmentName)`.
+A service that only bumps the version keeps its current console output but gains the enrichers and the
+`tenant` fix.
 
 ## [0.37.0] — 2026-10-02
 

@@ -24,6 +24,9 @@ public static class ServiceContext
         set => TraceIdLocal.Value = value;
     }
 
+    /// <summary>The trace id as set at the request edge, or null — <see cref="TraceId"/> without its placeholder.</summary>
+    public static string? TraceIdOrNull => TraceIdLocal.Value;
+
     /// <summary>The id of the service that initiated the current call, e.g. <c>"wallet-service"</c>.</summary>
     public static string? CallingService
     {
@@ -32,10 +35,10 @@ public static class ServiceContext
     }
 
     /// <summary>
-    /// The tenant the current request belongs to, if any — set by
-    /// <see cref="Logging.RequestLoggingMiddleware"/> from the inbound <c>X-Tenant-Id</c>
-    /// header. Null for a request that never carried one (an internal/unauthenticated
-    /// endpoint, for example). This is the same ambient source
+    /// The verified tenant the current request belongs to, if any — set from the live session
+    /// (<see cref="AmbientContextMiddleware"/>) or from an HMAC-verified service call
+    /// (<see cref="ServiceRequestAuthenticationMiddleware"/>), never from an unverified header.
+    /// Null for a request that has none (an internal/unauthenticated endpoint, for example). This is the same ambient source
     /// <c>Persistence.ModelBuilderExtensions.ApplyTikiConventions</c> and
     /// <c>Persistence.TenantAuditSaveChangesInterceptor</c> read from.
     /// </summary>
