@@ -1,0 +1,327 @@
+syntax = "proto3";
+
+option csharp_namespace = "Tiki.Grpc.Contracts.Integration";
+
+package tiki.grpc.contracts.integration;
+
+// Crayfi (Cray Finance) mesh API owned by the Integration service. Every message is prefixed with
+// Crayfi because this package is shared with every other Integration provider and message names
+// must be unique package-wide.
+service CrayfiService {
+  // Hosted checkout (collection). GET /api/get-subaccount returns the subaccount token that
+  // InitializeCheckout collects into.
+  rpc GetSubaccounts (CrayfiGetSubaccountsRequest) returns (CrayfiGetSubaccountsReply);
+  // POST /api/checkout/initialize. Returns the hosted payment link to redirect the customer to.
+  rpc InitializeCheckout (CrayfiInitializeCheckoutRequest) returns (CrayfiCheckoutLinkReply);
+  // GET /api/checkout/query/{reference}. Accepts the merchant reference or the payCode.
+  rpc QueryCheckout (CrayfiQueryCheckoutRequest) returns (CrayfiCheckoutTransactionReply);
+
+  // Fiat payout (bank transfer and mobile money).
+  rpc GetPaymentMethods (CrayfiGetPaymentMethodsRequest) returns (CrayfiGetPaymentMethodsReply);
+  rpc GetBanks (CrayfiGetBanksRequest) returns (CrayfiGetBanksReply);
+  rpc ValidateAccount (CrayfiValidateAccountRequest) returns (CrayfiValidateAccountReply);
+  rpc Disburse (CrayfiDisburseRequest) returns (CrayfiPayoutReply);
+  rpc RequeryPayout (CrayfiRequeryPayoutRequest) returns (CrayfiPayoutReply);
+
+  // Stablecoin payout: supported assets -> add beneficiary -> initiate payout -> query.
+  rpc GetSupportedAssets (CrayfiGetSupportedAssetsRequest) returns (CrayfiGetSupportedAssetsReply);
+  rpc AddCryptoBeneficiary (CrayfiAddCryptoBeneficiaryRequest) returns (CrayfiCryptoBeneficiaryReply);
+  rpc InitiateCryptoPayout (CrayfiInitiateCryptoPayoutRequest) returns (CrayfiPayoutReply);
+  // GET /api/query/{reference}.
+  rpc QueryCryptoPayout (CrayfiQueryTransactionRequest) returns (CrayfiPayoutReply);
+
+  // Refunds against a successful collection.
+  rpc InitiateRefund (CrayfiInitiateRefundRequest) returns (CrayfiRefundReply);
+  rpc QueryRefund (CrayfiQueryRefundRequest) returns (CrayfiRefundReply);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Hosted checkout
+// ---------------------------------------------------------------------------------------------
+
+message CrayfiGetSubaccountsRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+}
+
+message CrayfiSubaccount {
+  string uuid = 1;
+  string subaccount_token = 2;
+  string company_name = 3;
+  string company_email = 4;
+}
+
+message CrayfiGetSubaccountsReply {
+  repeated CrayfiSubaccount subaccounts = 1;
+}
+
+enum CrayfiFeeBearer {
+  CRAYFI_FEE_BEARER_UNSPECIFIED = 0;
+  CRAYFI_FEE_BEARER_MERCHANT = 1;
+  CRAYFI_FEE_BEARER_CUSTOMER = 2;
+}
+
+message CrayfiCheckoutCustomer {
+  string name = 1;
+  string email = 2;
+}
+
+message CrayfiInitializeCheckoutRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string amount = 3;
+  string currency = 4;
+  // Subaccount token from GetSubaccounts. Empty falls back to the Integration service's
+  // configured default subaccount token, if one is set.
+  string token = 5;
+  // Merchant reference, unique per merchant. Empty generates one, echoed back on the reply.
+  string reference = 6;
+  // e.g. "card".
+  string default_payment_method = 7;
+  CrayfiFeeBearer fee_bearer = 8;
+  string narration = 9;
+  // Cray's own method codes (e.g. "card", "transfer"). Cray does not publish a closed set, so
+  // these pass through verbatim. Empty means whatever the merchant account allows by default.
+  repeated string payment_methods = 10;
+  // Overrides the account's default post-payment callback/redirect when set.
+  string callback_url = 11;
+  CrayfiCheckoutCustomer customer = 12;
+  map<string, string> metadata = 13;
+}
+
+message CrayfiCheckoutLinkReply {
+  string link = 1;
+  string reference = 2;
+  string pay_code = 3;
+}
+
+message CrayfiQueryCheckoutRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  // Merchant reference or payCode.
+  string reference = 3;
+}
+
+// Normalized transaction outcome. The raw provider string is always returned alongside it.
+enum CrayfiTransactionStatus {
+  CRAYFI_TRANSACTION_STATUS_UNSPECIFIED = 0;
+  CRAYFI_TRANSACTION_STATUS_PENDING = 1;
+  CRAYFI_TRANSACTION_STATUS_SUCCESSFUL = 2;
+  CRAYFI_TRANSACTION_STATUS_FAILED = 3;
+  CRAYFI_TRANSACTION_STATUS_ABANDONED = 4;
+}
+
+message CrayfiCheckoutTransactionReply {
+  string status = 1;
+  CrayfiTransactionStatus normalized_status = 2;
+  string reference = 3;
+  string provider_reference = 4;
+  string amount = 5;
+  string net_amount = 6;
+  string fee = 7;
+  string payment_channel = 8;
+  string redirect_url = 9;
+  string callback_url = 10;
+  CrayfiCheckoutCustomer customer = 11;
+  // Raw JSON of Cray's metadata field (an object, or an empty string when none was set).
+  string metadata_json = 12;
+  string created = 13;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Fiat payout
+// ---------------------------------------------------------------------------------------------
+
+message CrayfiGetPaymentMethodsRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  // ISO 3166-1 alpha-2, e.g. "NG", "GH".
+  string country_code = 3;
+}
+
+message CrayfiPaymentMethod {
+  string alias = 1;
+  string code = 2;
+  string name = 3;
+  string min_amount = 4;
+  string max_amount = 5;
+  bool requires_confirmation = 6;
+}
+
+message CrayfiGetPaymentMethodsReply {
+  repeated CrayfiPaymentMethod payment_methods = 1;
+}
+
+message CrayfiGetBanksRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  // Optional. Only used by Cray for mobile money or Ghanaian account verification.
+  string country_code = 3;
+}
+
+message CrayfiBank {
+  string bank_name = 1;
+  string short_code = 2;
+  string bank_code = 3;
+  string institution_code = 4;
+  string institution_name = 5;
+}
+
+message CrayfiGetBanksReply {
+  repeated CrayfiBank banks = 1;
+}
+
+message CrayfiValidateAccountRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string account_number = 3;
+  // Bank code from GetBanks, or a mobile money provider code.
+  string bank_code = 4;
+  // Optional. Only used for mobile money or Ghanaian account verification.
+  string country_code = 5;
+}
+
+message CrayfiValidateAccountReply {
+  string account_name = 1;
+  string account_number = 2;
+  // Validation session id to pass as CrayfiDisburseRequest.ref_id.
+  string ref_id = 3;
+}
+
+message CrayfiDisburseRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string amount = 3;
+  string currency = 4;
+  // Destination bank account number or mobile money number.
+  string account_number = 5;
+  // Unique per payout - Cray's idempotency key.
+  string customer_reference = 6;
+  string narration = 7;
+  // Bank code, or a mobile money provider code (e.g. "mtn", "orange") for mobile money rails.
+  string bank_code = 8;
+  // Cray's lowercase country name, e.g. "nigeria", "senegal", "ivory coast".
+  string country = 9;
+  // Optional validation session id from ValidateAccount.
+  string ref_id = 10;
+}
+
+message CrayfiRequeryPayoutRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  // Cray's transaction reference returned by Disburse.
+  string transaction_id = 3;
+}
+
+// Shared by fiat disburse/requery and stablecoin initiate/query.
+message CrayfiPayoutReply {
+  string reference = 1;
+  string merchant_reference = 2;
+  string amount = 3;
+  string charge = 4;
+  // Raw provider status (e.g. "pending", "approved", "Successful", "Failed").
+  string status = 5;
+  CrayfiTransactionStatus normalized_status = 6;
+  string recipient_name = 7;
+  string recipient_bank_code = 8;
+  string recipient_account_number = 9;
+  string processor_reference = 10;
+  string failure_reason = 11;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Stablecoin payout
+// ---------------------------------------------------------------------------------------------
+
+message CrayfiGetSupportedAssetsRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+}
+
+message CrayfiCryptoAsset {
+  // Canonical asset id (e.g. "TRX_USDT_S2UZ") used as the beneficiary asset and payout currency.
+  string id = 1;
+  string name = 2;
+  string symbol = 3;
+  string blockchain = 4;
+  string base_asset = 5;
+  string network_protocol = 6;
+  string type = 7;
+  int32 decimals = 8;
+  bool testnet = 9;
+  bool deprecated = 10;
+  bool has_fee = 11;
+  string issuer_address = 12;
+}
+
+message CrayfiGetSupportedAssetsReply {
+  repeated CrayfiCryptoAsset assets = 1;
+}
+
+message CrayfiAddCryptoBeneficiaryRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string name = 3;
+  // Asset id from GetSupportedAssets. Determines which chain wallet_address is validated against.
+  string asset = 4;
+  string wallet_address = 5;
+}
+
+message CrayfiCryptoBeneficiaryReply {
+  string name = 1;
+  // Pass as CrayfiInitiateCryptoPayoutRequest.address_reference.
+  string address_reference = 2;
+  string asset = 3;
+  string wallet_address = 4;
+  string status = 5;
+}
+
+message CrayfiInitiateCryptoPayoutRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string amount = 3;
+  // Asset id from GetSupportedAssets. Must match the beneficiary's asset.
+  string currency = 4;
+  string address_reference = 5;
+  // Unique per payout - Cray's idempotency key.
+  string customer_reference = 6;
+  string narration = 7;
+}
+
+message CrayfiQueryTransactionRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string reference = 3;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Refunds
+// ---------------------------------------------------------------------------------------------
+
+message CrayfiInitiateRefundRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  // Reference of the original successful transaction.
+  string reference = 3;
+  // Empty means a full refund.
+  string amount = 4;
+  // Optional - Cray's docs list these for some rails (e.g. mobile money); passed through when set.
+  string pan = 5;
+  string subaccount_id = 6;
+}
+
+message CrayfiQueryRefundRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  string reference = 3;
+}
+
+message CrayfiRefundReply {
+  string reference = 1;
+  string status = 2;
+  CrayfiTransactionStatus normalized_status = 3;
+  string amount = 4;
+  string message = 5;
+  // Raw JSON of Cray's data object - refund response shapes are not fully documented.
+  string data_json = 6;
+}

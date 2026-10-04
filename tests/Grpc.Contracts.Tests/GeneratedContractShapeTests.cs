@@ -289,6 +289,65 @@ public class GeneratedContractShapeTests
             Enum.GetNames<IntegrationNs.FlutterwaveTransferType>());
 
     [Fact]
+    public void Integration_Crayfi_contract_generates_both_client_stub_and_service_base() =>
+        AssertGeneratesBoth(
+            typeof(IntegrationNs.CrayfiService.CrayfiServiceClient),
+            typeof(IntegrationNs.CrayfiService.CrayfiServiceBase));
+
+    [Theory]
+    [InlineData("GetSubaccounts")]
+    [InlineData("InitializeCheckout")]
+    [InlineData("QueryCheckout")]
+    [InlineData("GetPaymentMethods")]
+    [InlineData("GetBanks")]
+    [InlineData("ValidateAccount")]
+    [InlineData("Disburse")]
+    [InlineData("RequeryPayout")]
+    [InlineData("GetSupportedAssets")]
+    [InlineData("AddCryptoBeneficiary")]
+    [InlineData("InitiateCryptoPayout")]
+    [InlineData("QueryCryptoPayout")]
+    [InlineData("InitiateRefund")]
+    [InlineData("QueryRefund")]
+    public void Integration_Crayfi_rpc_is_present_on_both_the_stub_and_the_base(string rpcName) =>
+        AssertRpcPresentOnBoth(
+            typeof(IntegrationNs.CrayfiService.CrayfiServiceClient),
+            typeof(IntegrationNs.CrayfiService.CrayfiServiceBase),
+            rpcName);
+
+    [Fact]
+    public void Integration_Crayfi_checkout_and_payout_messages_have_the_expected_generated_fields()
+    {
+        AssertFields<IntegrationNs.CrayfiInitializeCheckoutRequest>(
+            ("BusinessId", typeof(string)), ("TenantId", typeof(string)), ("Amount", typeof(string)),
+            ("Currency", typeof(string)), ("Token", typeof(string)), ("Reference", typeof(string)),
+            ("DefaultPaymentMethod", typeof(string)), ("FeeBearer", typeof(IntegrationNs.CrayfiFeeBearer)),
+            ("Narration", typeof(string)), ("PaymentMethods", typeof(Google.Protobuf.Collections.RepeatedField<string>)),
+            ("CallbackUrl", typeof(string)), ("Customer", typeof(IntegrationNs.CrayfiCheckoutCustomer)),
+            ("Metadata", typeof(Google.Protobuf.Collections.MapField<string, string>)));
+        AssertFields<IntegrationNs.CrayfiDisburseRequest>(
+            ("BusinessId", typeof(string)), ("TenantId", typeof(string)), ("Amount", typeof(string)),
+            ("Currency", typeof(string)), ("AccountNumber", typeof(string)), ("CustomerReference", typeof(string)),
+            ("Narration", typeof(string)), ("BankCode", typeof(string)), ("Country", typeof(string)),
+            ("RefId", typeof(string)));
+        AssertFields<IntegrationNs.CrayfiPayoutReply>(
+            ("Reference", typeof(string)), ("MerchantReference", typeof(string)), ("Amount", typeof(string)),
+            ("Charge", typeof(string)), ("Status", typeof(string)),
+            ("NormalizedStatus", typeof(IntegrationNs.CrayfiTransactionStatus)), ("RecipientName", typeof(string)),
+            ("RecipientBankCode", typeof(string)), ("RecipientAccountNumber", typeof(string)),
+            ("ProcessorReference", typeof(string)), ("FailureReason", typeof(string)));
+    }
+
+    [Fact]
+    public void Integration_Crayfi_enums_have_the_specified_members()
+    {
+        Assert.Equal(new[] { "Unspecified", "Merchant", "Customer" }, Enum.GetNames<IntegrationNs.CrayfiFeeBearer>());
+        Assert.Equal(
+            new[] { "Unspecified", "Pending", "Successful", "Failed", "Abandoned" },
+            Enum.GetNames<IntegrationNs.CrayfiTransactionStatus>());
+    }
+
+    [Fact]
     public void Integration_ExchangeRates_contract_generates_both_client_stub_and_service_base() =>
         AssertGeneratesBoth(
             typeof(IntegrationNs.ExchangeRatesService.ExchangeRatesServiceClient),

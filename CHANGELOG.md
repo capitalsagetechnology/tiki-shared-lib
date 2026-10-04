@@ -5,6 +5,21 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
+## [0.39.0] — 2026-10-03
+
+### Added — Crayfi (Cray Finance) provider contract
+
+- New `Tiki.Grpc.Contracts.Integration/Protos/crayfi.proto` with `CrayfiService`, picked up by the
+  existing `Protos/*.proto` wildcard (no csproj change):
+  - Hosted checkout: `GetSubaccounts`, `InitializeCheckout`, `QueryCheckout`.
+  - Fiat payout: `GetPaymentMethods`, `GetBanks`, `ValidateAccount`, `Disburse`, `RequeryPayout`.
+  - Stablecoin payout: `GetSupportedAssets`, `AddCryptoBeneficiary`, `InitiateCryptoPayout`,
+    `QueryCryptoPayout`.
+  - Refunds: `InitiateRefund` (full or partial), `QueryRefund`.
+- Every message is `Crayfi`-prefixed. Replies carry Cray's raw status plus a normalized
+  `CrayfiTransactionStatus`. For tiki-integration-service (server) and tiki-wallet-api (client).
+
+Additive.
 ## [0.38.0] — 2026-10-03
 
 ### Added — structured logs that Grafana can search
