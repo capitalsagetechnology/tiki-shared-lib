@@ -5,6 +5,21 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
+## [0.39.0] — 2026-10-03
+
+### Added — Crayfi (Cray Finance) provider contract
+
+- New `Tiki.Grpc.Contracts.Integration/Protos/crayfi.proto` with `CrayfiService`, picked up by the
+  existing `Protos/*.proto` wildcard (no csproj change):
+  - Hosted checkout: `GetSubaccounts`, `InitializeCheckout`, `QueryCheckout`.
+  - Fiat payout: `GetPaymentMethods`, `GetBanks`, `ValidateAccount`, `Disburse`, `RequeryPayout`.
+  - Stablecoin payout: `GetSupportedAssets`, `AddCryptoBeneficiary`, `InitiateCryptoPayout`,
+    `QueryCryptoPayout`.
+  - Refunds: `InitiateRefund` (full or partial), `QueryRefund`.
+- Every message is `Crayfi`-prefixed. Replies carry Cray's raw status plus a normalized
+  `CrayfiTransactionStatus`. For tiki-integration-service (server) and tiki-wallet-api (client).
+
+Additive.
 ## [0.38.0] — 2026-10-03
 
 ### Added — structured logs that Grafana can search
@@ -14,7 +29,9 @@ behavior change in a minor or patch release.
   `.WriteTo.Console()` — calling both writes every line twice.
   - Console format resolves by `Tiki:Logging:Format` (`json` | `text`). When it is unset, a
     container (`DOTNET_RUNNING_IN_CONTAINER=true`) or any non-Development environment writes
-    **compact JSON** (`RenderedCompactJsonFormatter`), and local Development writes the readable
+    **compact JSON** (`TikiCompactJsonFormatter`: CLEF like `RenderedCompactJsonFormatter`, except
+    `@m` renders strings unquoted exactly as the text console's `{Message:lj}`, so regexes written
+    against text logs keep matching), and local Development writes the readable
     `[HH:mm:ss LVL] message` text. In JSON every structured property is its own field, which the
     shared infra's Alloy pipeline turns into Loki structured metadata.
   - Optional second sink: `Tiki:Logging:Otlp:Enabled` (off by default) sends logs over OTLP to the
@@ -28,15 +45,18 @@ behavior change in a minor or patch release.
 - `TikiTraceIds`: every log line's `TraceId` / `SpanId` is now Tempo's 32-hex / 16-hex id, on HTTP and
   Kafka paths alike, so a log line and its trace join directly. `ServiceContext.TraceId` itself is
   unchanged (it is what `X-Correlation-Id` and the Kafka `traceparent` carry).
-- New packages: `Serilog.Formatting.Compact` 3.0.0, `Serilog.Sinks.OpenTelemetry` 4.2.0.
+- `RequestLoggingMiddleware`'s line now names its fields `RequestMethod`/`RequestPath` (were
+  `Method`/`Path`, same text), logs `TraceId` as Tempo's id, and appends `user {UserId}`.
+- `SessionLifecycleLoggingHandler` logs the normalised trace id too.
+- New packages: `Serilog.Sinks.Console` 6.0.0, `Serilog.Sinks.OpenTelemetry` 4.2.0.
 
 ### Fixed — request lines always said `tenant null`
 
 - `RequestLoggingMiddleware` read `ServiceContext.TenantId` after `await next()`, but the value set by
   authentication further down the pipeline lives in an `AsyncLocal` that never flows back up, so every
-  request line logged `tenant null`, authenticated or not. The verified tenant, user and session are now
-  recorded on a `RequestLogContext` created before `next` (written by `AmbientContextMiddleware` and the
-  service-request authentication), and the completion line reads them from there.
+  request line logged `tenant null`, authenticated or not. The verified tenant and user are now
+  recorded on a `RequestLogContext` created before `next` (written by the JWT token-validated handler,
+  `AmbientContextMiddleware` and the service-request authentication), and the completion line reads them from there.
 
 ### Upgrading
 
