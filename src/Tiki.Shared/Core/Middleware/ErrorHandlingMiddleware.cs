@@ -30,7 +30,11 @@ public sealed class ErrorHandlingMiddleware(RequestDelegate next, ILogger<ErrorH
 
             context.Response.ContentType = "application/problem+json";
             context.Response.StatusCode = problem.Status ?? StatusCodes.Status500InternalServerError;
-            await context.Response.WriteAsJsonAsync(problem);
+            // Serialised by its runtime type. `problem` is declared as ProblemDetails, and
+            // System.Text.Json writes the declared type: a ValidationProblemDetails lost its
+            // `errors` map that way, so every validation 400 told the caller nothing about which
+            // field was wrong.
+            await context.Response.WriteAsJsonAsync(problem, problem.GetType());
         }
     }
 
