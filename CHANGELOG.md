@@ -5,6 +5,18 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
+## [0.40.0] — 2026-10-05
+
+### Added — Veriff proof of address and US SSN registry check
+
+- `veriff.proto`: `VeriffVerificationType` gains `VERIFF_VERIFICATION_TYPE_PROOF_OF_ADDRESS = 4` and
+  `VERIFF_VERIFICATION_TYPE_SSN = 5`; each selects its own Veriff workspace in Integration.
+- New `ValidateRegistry` RPC (`ValidateRegistryRequest` → `SessionReply`) for Veriff's
+  `POST /v1/validate-registry`. The verdict arrives on Veriff's decision webhook, received by
+  Compliance. For tiki-integration-service (server) and tiki-compliance-api (client).
+
+Additive.
+
 ## [0.39.0] — 2026-10-03
 
 ### Added — Crayfi (Cray Finance) provider contract

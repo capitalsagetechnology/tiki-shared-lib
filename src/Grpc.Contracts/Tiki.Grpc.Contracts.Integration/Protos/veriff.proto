@@ -17,6 +17,10 @@ service VeriffService {
   rpc ListSessionImages (ListSessionImagesRequest) returns (ListSessionImagesReply);
   // Streams one provider image so callers are not constrained by unary gRPC message limits.
   rpc DownloadMedia (DownloadMediaRequest) returns (stream DownloadMediaChunk);
+  // US SSN registry check (Veriff POST /v1/validate-registry), always in the Ssn workspace.
+  // Answers with the session only; the verdict arrives later on Veriff's decision webhook,
+  // which Compliance receives — this service does not handle webhooks.
+  rpc ValidateRegistry (ValidateRegistryRequest) returns (SessionReply);
 }
 
 enum VeriffVerificationType {
@@ -24,6 +28,12 @@ enum VeriffVerificationType {
   VERIFF_VERIFICATION_TYPE_IDENTITY = 1;
   VERIFF_VERIFICATION_TYPE_ADDRESS = 2;
   VERIFF_VERIFICATION_TYPE_AML = 3;
+  // Proof-of-address document session in its own workspace. CreateSession defaults
+  // acceptableTypes to the eleven supported document types when the caller sends none.
+  VERIFF_VERIFICATION_TYPE_PROOF_OF_ADDRESS = 4;
+  // US SSN registry check. Used by ValidateRegistry (implicitly) and by GetDecision /
+  // UpdateSessionStatus to pick the right workspace credentials.
+  VERIFF_VERIFICATION_TYPE_SSN = 5;
 }
 
 message CreateSessionRequest {
@@ -218,4 +228,40 @@ message DownloadMediaChunk {
   bytes content = 1;
   // Present on the first chunk and repeated defensively by the server.
   string content_type = 2;
+}
+
+message ValidateRegistryRequest {
+  // Ledger attribution — never forwarded to Veriff.
+  string business_id = 1;
+  string tenant_id = 2;
+  ValidateRegistryVerification verification = 3;
+}
+
+message ValidateRegistryVerification {
+  string callback = 1;
+  ValidateRegistryPerson person = 2;
+  ValidateRegistryAddress address = 3;
+  string vendor_data = 4;
+  string end_user_id = 5;
+}
+
+message ValidateRegistryPerson {
+  // The SSN. Nine digits; dashes and spaces are stripped before it is sent. Never logged.
+  string id_number = 1;
+  string first_name = 2;
+  string last_name = 3;
+  string full_name = 4;
+  // yyyy-MM-dd.
+  string date_of_birth = 5;
+  string phone_number = 6;
+}
+
+message ValidateRegistryAddress {
+  string full_address = 1;
+  string street = 2;
+  string house_number = 3;
+  string postcode = 4;
+  string city = 5;
+  string state = 6;
+  string unit = 7;
 }
