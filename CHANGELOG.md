@@ -5,6 +5,16 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
+## [0.41.0] — 2026-10-05
+
+### Fixed — validation errors reach the caller
+
+- `ErrorHandlingMiddleware` wrote the mapped problem by its declared type (`ProblemDetails`), so a
+  `ValidationException` came back as a 400 with no `errors` map — the caller could not tell which
+  field was wrong. It now serialises by runtime type, so `ValidationProblemDetails.errors` is
+  included. No contract change; every service using the middleware gets field errors back after
+  bumping.
+
 ## [0.40.0] — 2026-10-05
 
 ### Added — Veriff proof of address and US SSN registry check
