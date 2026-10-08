@@ -15,6 +15,14 @@ public sealed class TikiMessagingOptions
 
     /// <summary>Default consumer group id for this service — every consumer belongs to the same service, so one default is enough.</summary>
     public string? ConsumerGroupId { get; init; }
+
+    /// <summary>
+    /// How long a publish may wait for the broker to acknowledge it before it fails, in
+    /// milliseconds. librdkafka's own default is five minutes, which let one unreachable broker
+    /// hold a request (a payment-code email, say) open for that long. Fifteen seconds is well
+    /// past a healthy round trip and short enough for the caller to answer.
+    /// </summary>
+    public int MessageTimeoutMs { get; init; } = 15_000;
 }
 
 public static class MessagingExtensions
@@ -35,7 +43,7 @@ public static class MessagingExtensions
         services.AddSingleton(options);
 
         services.AddSingleton<IProducer<string, string>>(_ =>
-            new ProducerBuilder<string, string>(new ProducerConfig { BootstrapServers = options.BootstrapServers }).Build());
+            new ProducerBuilder<string, string>(options.BuildProducerConfig()).Build());
 
         services.AddSingleton<ITikiMessageProducer, KafkaMessageProducer>();
 
@@ -46,6 +54,16 @@ public static class MessagingExtensions
 
         return services;
     }
+
+    /// <summary>The producer settings every service publishes with — the broker list and a bounded delivery timeout.</summary>
+    public static ProducerConfig BuildProducerConfig(this TikiMessagingOptions options) => new()
+    {
+        BootstrapServers = options.BootstrapServers,
+        MessageTimeoutMs = options.MessageTimeoutMs > 0
+            ? options.MessageTimeoutMs
+            : throw new InvalidOperationException(
+                $"'{TikiMessagingOptions.SectionName}:MessageTimeoutMs' must be a positive number of milliseconds."),
+    };
 
     /// <summary>Builds a consumer configured for this service's consumer group — pass it to a <see cref="TikiConsumerBackgroundService{TMessage}"/> subclass.</summary>
     public static IConsumer<string, string> BuildTikiConsumer(this TikiMessagingOptions options, string? groupIdOverride = null) =>
