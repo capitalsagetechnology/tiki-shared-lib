@@ -5,6 +5,20 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
+## [0.42.0] — 2026-10-08
+
+### Fixed — a publish no longer waits five minutes for a broker that is down
+
+- The Kafka producer set only `BootstrapServers`, so librdkafka's default delivery timeout
+  (`message.timeout.ms`, 300 000 ms) applied: with Redpanda unreachable, a request that publishes
+  and awaits the delivery (a payment-authorisation email, for example) could hang for up to five
+  minutes. The producer now uses `TikiMessagingOptions.MessageTimeoutMs`, default **15 000 ms**,
+  configurable per service as `Tiki:Messaging:MessageTimeoutMs`; a value that is not positive is
+  refused at startup. The settings are built by the new `TikiMessagingOptions.BuildProducerConfig()`.
+
+Additive. A publish that used to wait up to five minutes now fails with a delivery error after
+15 seconds, so services that await a publish see that error sooner.
+
 ## [0.41.0] — 2026-10-05
 
 ### Fixed — validation errors reach the caller
