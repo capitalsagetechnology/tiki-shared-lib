@@ -5,6 +5,18 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
+## [0.43.0] — 2026-10-09
+
+### Added — a `Commissions` permission module
+
+- `TikiModule.Commissions` (`commissions:read`, `commissions:write`) for affiliate commissions:
+  a tenant's earning rates and ceiling, commission records and their payouts. A module of its own
+  so that granting someone the right to set earning rates does not also hand them write on
+  `settings` (fees, taxes and the rest).
+
+Additive. Appended after `Settings`, so no existing module's value or permission string changes.
+Identity grants it; services enforce it once they reference this version.
+
 ## [0.42.0] — 2026-10-08
 
 ### Fixed — a publish no longer waits five minutes for a broker that is down

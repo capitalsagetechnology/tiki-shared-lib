@@ -50,6 +50,13 @@ public enum TikiModule
 
     /// <summary>Platform and tenant configuration.</summary>
     Settings,
+
+    /// <summary>
+    /// Affiliate commissions: a tenant's earning rates and ceiling, the commission each affiliate
+    /// earns, and the payouts of it. Its own module because those who set earning rates (an MD, a
+    /// Head of Operations) must not thereby gain write on every other setting.
+    /// </summary>
+    Commissions,
 }
 
 /// <summary>
