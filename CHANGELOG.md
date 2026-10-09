@@ -5,6 +5,17 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
+## [0.43.0] — 2026-10-09
+
+### Added — Ercas hosted checkout
+
+- `ercas.proto`: `ErcasService.InitializeCheckout` and `ErcasService.VerifyCheckout` for ErcasPay's
+  hosted collection page (`POST /payment/initiate`, `GET /payment/transaction/verify/{transactionReference}`).
+  For tiki-integration-service (server) and tiki-wallet-api (client). Direct card, USSD and
+  bank-transfer calls are not in this contract.
+
+Additive. Services that do not call `ErcasService` are unchanged.
+
 ## [0.42.0] — 2026-10-08
 
 ### Fixed — a publish no longer waits five minutes for a broker that is down
