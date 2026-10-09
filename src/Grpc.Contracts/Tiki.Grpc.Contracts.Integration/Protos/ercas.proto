@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+option csharp_namespace = "Tiki.Grpc.Contracts.Integration";
+
+package tiki.grpc.contracts.integration;
+
+// ErcasPay hosted checkout (NGN collection). Every message is prefixed with Ercas because this
+// package is shared with every other Integration provider and message names must be unique
+// package-wide. Direct card, USSD and bank-transfer calls are not part of this service.
+service ErcasService {
+  // POST /payment/initiate. Returns the hosted checkout URL. It expires after 90 minutes.
+  rpc InitializeCheckout (ErcasInitializeCheckoutRequest) returns (ErcasCheckoutLinkReply);
+  // GET /payment/transaction/verify/{transactionReference}. Confirm a webhook before settling.
+  rpc VerifyCheckout (ErcasVerifyCheckoutRequest) returns (ErcasCheckoutTransactionReply);
+}
+
+enum ErcasFeeBearer {
+  ERCAS_FEE_BEARER_UNSPECIFIED = 0;
+  ERCAS_FEE_BEARER_MERCHANT = 1;
+  ERCAS_FEE_BEARER_CUSTOMER = 2;
+}
+
+// Normalized transaction outcome. The raw provider string is always returned alongside it.
+enum ErcasTransactionStatus {
+  ERCAS_TRANSACTION_STATUS_UNSPECIFIED = 0;
+  ERCAS_TRANSACTION_STATUS_PENDING = 1;
+  ERCAS_TRANSACTION_STATUS_SUCCESSFUL = 2;
+  ERCAS_TRANSACTION_STATUS_FAILED = 3;
+}
+
+message ErcasCheckoutCustomer {
+  string name = 1;
+  string email = 2;
+  string phone_number = 3;
+}
+
+message ErcasInitializeCheckoutRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  // Major units (naira). A local checkout must be above 100.
+  string amount = 3;
+  string currency = 4;
+  // Merchant reference, unique per merchant. Echoed back as paymentReference.
+  string reference = 5;
+  // Comma-separated methods shown on the hosted page (card, bank-transfer, ussd, qrcode).
+  // Empty falls back to the Integration service's configured default.
+  string payment_methods = 6;
+  ErcasFeeBearer fee_bearer = 7;
+  string redirect_url = 8;
+  string description = 9;
+  ErcasCheckoutCustomer customer = 10;
+}
+
+message ErcasCheckoutLinkReply {
+  string checkout_url = 1;
+  string reference = 2;
+  // Ercas transactionReference (ERCS|...). VerifyCheckout is called with this, not our reference.
+  string transaction_reference = 3;
+}
+
+message ErcasVerifyCheckoutRequest {
+  string business_id = 1;
+  string tenant_id = 2;
+  // Ercas transactionReference from InitializeCheckout or the webhook.
+  string transaction_reference = 3;
+}
+
+message ErcasCheckoutTransactionReply {
+  string status = 1;
+  ErcasTransactionStatus normalized_status = 2;
+  // Our payment reference when Ercas echoed one. Often empty on verify; the ERCS reference is
+  // ercs_reference.
+  string reference = 3;
+  string ercs_reference = 4;
+  string tx_reference = 5;
+  string amount = 6;
+  string fee = 7;
+  string fee_bearer = 8;
+  string settled_amount = 9;
+  string currency = 10;
+  string channel = 11;
+  ErcasCheckoutCustomer customer = 12;
+}
