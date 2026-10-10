@@ -550,6 +550,12 @@ message KybDirectorDetails {
   string job_title = 4;
   string occupation = 5;
   string date_of_birth = 6;
+  // Read-only, on GetBusinessKyb: "InProgress" or "Complete", and nothing else. Neutral by design:
+  // a possible sanctions match, or a director under compliance review, reads as InProgress — a
+  // business is never told a provider failed or that one of its directors may be a sanctioned
+  // party. Unset until the application is submitted and its directors exist to be checked.
+  // Ignored on writes.
+  optional string check_status = 7;
 }
 message KybBeneficialOwnerDetails {
   string full_name = 1;

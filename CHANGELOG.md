@@ -5,6 +5,18 @@ All notable changes to `Tiki.Shared` are documented here. This project follows
 version bump with a migration note called out explicitly below — never a silent
 behavior change in a minor or patch release.
 
+## [0.45.0] — 2026-10-10
+
+### Added — a director's check status on the applicant's KYB view
+
+- `KybDirectorDetails.check_status` (field 7, `optional string`): set by Compliance on
+  `GetBusinessKyb` to `"InProgress"` or `"Complete"`, so Identity can show a business owner how far
+  each director's check has got. Neutral by design — a possible sanctions match or a director
+  under compliance review reads as `InProgress`; a provider failure, a match or a decline is never
+  carried. Unset for a draft (no director has been checked yet) and ignored on writes.
+
+Additive. A new field number, so older readers skip it and older servers simply leave it unset.
+
 ## [0.44.0] — 2026-10-09
 
 ### Added — Ercas hosted checkout
